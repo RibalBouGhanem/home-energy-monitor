@@ -1,7 +1,6 @@
 import React from "react";
 import { Routes, Route } from "react-router-dom";
 
-import RequireAuth from "../auth/RequireAuth";
 import RequireRole from "../auth/RequireRole";
 
 import HomePage from "../pages/HomePage";
@@ -23,23 +22,21 @@ export default function AppRoutes() {
       <Route path="/" element={<HomePage />} />
       <Route path="/login" element={<LoginPage />} />
 
-      {/* Anything behind auth */}
-      <Route element={<RequireAuth />}>
-        {/* Admin-only area */}
-        <Route element={<RequireRole />}>
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<AdminDashboard />} />
-            <Route path="users" element={<UsersList />} />
-            <Route path="users/new" element={<UserCreate />} />
-            {/* <Route path="users/:id" element={<UserDetail />} />
 
-            <Route path="houses" element={<HousesList />} />
+      {/* Admin-only area */}
+      <Route element={<RequireRole />}>
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminDashboard />} />
+          <Route path="users" element={<UsersList />} />
+          <Route path="users/new" element={<UserCreate />} />
+          {/* <Route path="users/:id" element={<UserDetail />} />
 
-            <Route path="monitors" element={<MonitorsList />} />
-            <Route path="monitors/:id" element={<MonitorDetail />} />
+          <Route path="houses" element={<HousesList />} />
 
-            <Route path="readings" element={<ReadingsExplorer />} /> */}
-          </Route>
+          <Route path="monitors" element={<MonitorsList />} />
+          <Route path="monitors/:id" element={<MonitorDetail />} />
+
+          <Route path="readings" element={<ReadingsExplorer />} /> */}
         </Route>
       </Route>
 

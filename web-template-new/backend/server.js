@@ -7,7 +7,7 @@ const app = express();
 app.use(cors({ origin: "http://localhost:3000" }));
 app.use(express.json());
 
-const dbConfigs = {
+const dbConfigs = { // tried to do something where different databases could be used depending on which website was opened but never finished it
     companyDB: {
         host: "localhost",
         user: "root",
@@ -22,7 +22,10 @@ const dbConfigs = {
     },
 }
 
-const db = mysql.createConnection();
+// TO-DO: if implementing multiple databases for the corresponding websites fails, remove the following line and always use companyDB, 
+// and create a new react project for home_energy_monitor by copying this project and excluding certain pages and components such as login, admin, and others
+
+const db = mysql.createConnection(dbConfigs.companyDB); // default to use companyDB
 
 db.connect((err) => {
   if (err) console.log("DB CONNECT ERROR:", err);

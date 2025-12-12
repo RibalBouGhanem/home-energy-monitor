@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Dec 12, 2025 at 07:07 PM
+-- Generation Time: Dec 12, 2025 at 10:15 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -18,7 +18,7 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Database: `company_energy_monitor_system`
+-- Database: `company_energy_monitor`
 --
 
 -- --------------------------------------------------------
@@ -194,9 +194,19 @@ CREATE TABLE `staff` (
 
 CREATE TABLE `users` (
   `Email` varchar(30) NOT NULL,
+  `Username` varchar(30) NOT NULL,
   `Name` varchar(30) NOT NULL,
-  `Password` varchar(20) NOT NULL
+  `Password` varchar(20) NOT NULL,
+  `isAdmin` tinyint(1) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `users`
+--
+
+INSERT INTO `users` (`Email`, `Username`, `Name`, `Password`, `isAdmin`) VALUES
+('a@a.a', 'a', 'a', '1', 1),
+('b@b.b', 'b', 'b', '1', 0);
 
 --
 -- Indexes for dumped tables

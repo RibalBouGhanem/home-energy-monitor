@@ -1,0 +1,20 @@
+.users-page {
+  max-width: 800px;
+}
+
+.users-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.users-list {
+  margin-top: 16px;
+  padding-left: 0;
+  list-style: none;
+}
+
+.users-list li {
+  padding: 8px 0;
+  border-bottom: 1px solid #ccc;
+}

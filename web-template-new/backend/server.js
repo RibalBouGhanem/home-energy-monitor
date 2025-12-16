@@ -33,37 +33,57 @@ db.connect((err) => {
 });
 
 app.post("/login", (req, res) => {
-  const { username, password } = req.body;
+  const { email, password } = req.body;
 
-  const q = "SELECT username, isAdmin FROM users WHERE username = ? AND password = ? LIMIT 1";
-  db.query(q, [username, password], (err, data) => {
+  const q = "SELECT email, isAdmin FROM users WHERE email = ? AND password = ? LIMIT 1";
+  db.query(q, [email, password], (err, data) => {
     if (err) {
       console.log("LOGIN DB ERROR:", err);
       return res.status(500).json({ message: "DB error" });
     }
 
     if (data.length === 0) {
-      return res.status(401).json({ message: "Invalid username or password" });
+      console.log("INVALID CREDENTIALS:", email, err);
+      return res.status(401).json({ message: "Invalid email or password" });
     }
 
     const user = data[0];
 
     return res.json({
         user: {
-            username: user.username,
+            email: user.email,
             isAdmin: user.isAdmin === 1,
     }});
   });
 });
 
 app.get("/api/users", (req, res) => {
-  const q = "SELECT username, isAdmin FROM users";
+  const q = "SELECT email, password, isAdmin FROM users";
   db.query(q, (err, data) => {
     if (err) {
       console.log("USERS DB ERROR:", err);
       return res.status(500).json({ message: "DB error" });
     }
     return res.json(data);
+  });
+});
+
+app.post("/api/users", (req, res) => {
+  const q = "INSERT INTO users (email, name, password, PhoneNumber, MonitorType, SubscriptionType) VALUES (?, ?, ?, ?, ?, ?)";
+  const values = [
+    req.body.email,
+    req.body.name,
+    req.body.password,
+    req.body.PhoneNumber,
+    req.body.MonitorType,
+    req.body.SubscriptionType
+  ];
+  db.query(q, values, (err, data) => {
+    if (err) {
+      console.log("USERS DB ERROR:", err);
+      return res.status(500).json({ message: "DB error" });
+    }
+    return res.json({ message: "User created successfully" });
   });
 });
 

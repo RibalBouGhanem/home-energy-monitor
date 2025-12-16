@@ -8,7 +8,7 @@ export default function UserCreate() {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState("customer");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
   const submit = async (e) => {
@@ -16,7 +16,7 @@ export default function UserCreate() {
     setError("");
 
     try {
-      await axios.post("/api/users", { name, email, role });
+      await axios.post("/api/users", { name, email });
       navigate("/admin/users");
     } catch (err) {
       setError(err.response?.data?.message || "Failed to create user");
@@ -40,11 +40,12 @@ export default function UserCreate() {
           onChange={(e) => setEmail(e.target.value)}
         />
 
-        <select value={role} onChange={(e) => setRole(e.target.value)}>
-          <option value="customer">Customer</option>
-          <option value="viewer">Viewer</option>
-        </select>
-
+        <input
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        
         <button type="submit">Create</button>
 
         {error && <p className="form-error">{error}</p>}

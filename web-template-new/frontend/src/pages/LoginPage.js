@@ -9,7 +9,7 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const { setUser } = useAuth();
 
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [status, setStatus] = useState("success");
@@ -19,7 +19,7 @@ const LoginPage = () => {
     setError("");
 
     try {
-      const res = await axios.post("/login", { username, password });
+      const res = await axios.post("/login", { email, password });
       setUser(res.data.user);
 
       // role-based redirect
@@ -79,19 +79,19 @@ const LoginPage = () => {
 				<div className="login-card">
 					<h2>Log in</h2>
 					<p className="login-subtitle">
-						Use your registered username and password to continue.
+						Use your registered email and password to continue.
 					</p>
 
 					<form className="login-form" onSubmit={handleSubmit}>
 						<div className="form-group">
-							<label htmlFor="login-username">Username</label>
+							<label htmlFor="login-email">Email</label>
 							<input
-								id="login-username"
+								id="login-email"
 								type="text"
-								name="username"
-								value={username}
-								onChange={(e) => setUsername(e.target.value)}
-								placeholder="UsernameExample123"
+								name="email"
+								value={email}
+								onChange={(e) => setEmail(e.target.value)}
+								placeholder="Email@example.com"
 								required
 							/>
 						</div>

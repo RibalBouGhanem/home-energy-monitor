@@ -1,0 +1,28 @@
+/* Uses your template’s classes; only adds minimal helpers */
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nav-auth-link {
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.nav-auth-button {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+}
+
+.nav-links-mobile.open {
+  display: block;
+}
+
+.hamburger.is-open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.hamburger.is-open span:nth-child(2) { opacity: 0; }
+.hamburger.is-open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }

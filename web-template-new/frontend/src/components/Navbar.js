@@ -1,114 +1,106 @@
-// src/components/Navbar.jsx
-import React, { useEffect, useState, useCallback } from "react";
-
-const SECTIONS = ["home", "dashboard", "analytics", "reports", "contact"];
+import React, { useEffect, useState } from "react";
+import { NavLink } from "react-router-dom";
+import { useAuth } from "../auth/AuthProvider";
+import "../styles/Navbar.css";
 
 export default function Navbar() {
-	const [mobileOpen, setMobileOpen] = useState(false);
-	const [scrolled, setScrolled] = useState(false);
-	const [activeSection, setActiveSection] = useState("home");
+  const { user, setUser } = useAuth();
+  const [open, setOpen] = useState(false);
 
-	const handleScroll = useCallback(() => {
-		const scrollY = window.pageYOffset;
-		setScrolled(scrollY > 50);
+  useEffect(() => {
+    const onResize = () => {
+      if (window.innerWidth > 900) setOpen(false);
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
-		const sections = SECTIONS.map((id) => document.getElementById(id)).filter(
-			Boolean
-		);
+  const logout = () => {
+    setUser(null);
+    setOpen(false);
+  };
 
-		sections.forEach((section) => {
-			const sectionHeight = section.offsetHeight;
-			const sectionTop = section.offsetTop - 100;
-			const sectionId = section.getAttribute("id");
+  const links = user?.isAdmin
+    ? [
+        { to: "/admin", label: "Dashboard", end: true },
+        { to: "/admin/users", label: "Users" },
+        { to: "/admin/houses", label: "Houses" },
+        { to: "/admin/monitors", label: "Monitors" },
+        { to: "/admin/readings", label: "Readings" },
+      ]
+    : [
+        { to: "/", label: "Home", end: true },
+        { to: "/dashboard", label: "Dashboard" },
+        { to: "/analytics", label: "Analytics" },
+        { to: "/reports", label: "Reports" },
+        { to: "/contact", label: "Contact" },
+      ];
 
-			if (scrollY > sectionTop && scrollY <= sectionTop + sectionHeight) {
-				setActiveSection(sectionId);
-			}
-		});
-	}, []);
+  return (
+    <nav id="navbar" className={user?.isAdmin ? "navbar-admin" : ""}>
+      <div className="nav-container">
+        <NavLink to={user?.isAdmin ? "/admin" : "/"} className="logo" onClick={() => setOpen(false)}>
+          <div className="logo-icon">
+            <svg viewBox="0 0 24 24">
+              <path d="M3 13h2v8H3zm4-8h2v13H7zm4-2h2v15h-2zm4 4h2v11h-2zm4-2h2v13h-2z" />
+            </svg>
+          </div>
+          <span className="logo-text">Graph Page</span>
+        </NavLink>
 
-	useEffect(() => {
-		window.addEventListener("scroll", handleScroll);
-		return () => window.removeEventListener("scroll", handleScroll);
-	}, [handleScroll]);
+        <ul className="nav-links">
+          {links.map((l) => (
+            <li key={l.to}>
+              <NavLink
+                to={l.to}
+                end={l.end}
+                className={({ isActive }) => (isActive ? "active" : "")}
+              >
+                {l.label}
+              </NavLink>
+            </li>
+          ))}
+        </ul>
 
-	const handleNavClick = () => {
-		// just close mobile menu; let anchor handle scrolling
-		setMobileOpen(false);
-	};
+        <div className="nav-actions">
+          {!user ? (
+            <NavLink className="nav-auth-link" to="/login">
+              Log in
+            </NavLink>
+          ) : (
+            <button type="button" className="nav-auth-link nav-auth-button" onClick={logout}>
+              Log out
+            </button>
+          )}
 
-	return (
-		<nav id="navbar" className={scrolled ? "scrolled" : ""}>
-			<div className="nav-container">
-				<a href="#home" className="logo" onClick={handleNavClick}>
-					<div className="logo-icon">
-						<svg viewBox="0 0 24 24">
-							<path d="M3 13h2v8H3zm4-8h2v13H7zm4-2h2v15h-2zm4 4h2v11h-2zm4-2h2v13h-2z" />
-						</svg>
-					</div>
-					<span className="logo-text">Graph Page</span>
-				</a>
+          <button
+            type="button"
+            className={`hamburger ${open ? "is-open" : ""}`}
+            id="hamburger"
+            onClick={() => setOpen((p) => !p)}
+            aria-label="Toggle menu"
+          >
+            <span />
+            <span />
+            <span />
+          </button>
+        </div>
+      </div>
 
-				<ul className="nav-links">
-					{SECTIONS.map((id) => (
-						<li key={id}>
-							<a
-								href={`#${id}`}
-								className={activeSection === id ? "active" : ""}
-								onClick={handleNavClick}
-							>
-								{id.charAt(0).toUpperCase() + id.slice(1)}
-							</a>
-						</li>
-					))}
-				</ul>
-
-				<a
-					href="https://www.google.com/search"
-					target="_blank"
-					rel="noopener noreferrer"
-					title="Search"
-				>
-					<svg
-						className="search-icon"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						strokeWidth="2"
-					>
-						<circle cx="11" cy="11" r="8"></circle>
-						<path d="m21 21-4.35-4.35"></path>
-					</svg>
-				</a>
-
-				<div
-					className={`hamburger ${mobileOpen ? "active" : ""}`}
-					id="hamburger"
-					onClick={() => setMobileOpen((prev) => !prev)}
-				>
-					<span></span>
-					<span></span>
-					<span></span>
-					<span></span>
-				</div>
-			</div>
-
-			<ul
-				className={`nav-links-mobile ${mobileOpen ? "active" : ""}`}
-				id="navLinksMobile"
-			>
-				{SECTIONS.map((id) => (
-					<li key={id}>
-						<a
-							href={`#${id}`}
-							className={activeSection === id ? "active" : ""}
-							onClick={handleNavClick}
-						>
-							{id.charAt(0).toUpperCase() + id.slice(1)}
-						</a>
-					</li>
-				))}
-			</ul>
-		</nav>
-	);
+      <ul className={`nav-links-mobile ${open ? "open" : ""}`} id="navLinksMobile">
+        {links.map((l) => (
+          <li key={l.to}>
+            <NavLink
+              to={l.to}
+              end={l.end}
+              className={({ isActive }) => (isActive ? "active" : "")}
+              onClick={() => setOpen(false)}
+            >
+              {l.label}
+            </NavLink>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
 }

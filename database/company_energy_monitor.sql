@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Dec 12, 2025 at 10:15 PM
+-- Generation Time: Dec 16, 2025 at 04:16 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -189,24 +189,37 @@ CREATE TABLE `staff` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `useraddress`
+--
+
+CREATE TABLE `useraddress` (
+  `Address` varchar(50) NOT NULL,
+  `UserEmail` varchar(50) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `users`
 --
 
 CREATE TABLE `users` (
   `Email` varchar(30) NOT NULL,
-  `Username` varchar(30) NOT NULL,
   `Name` varchar(30) NOT NULL,
   `Password` varchar(20) NOT NULL,
-  `isAdmin` tinyint(1) NOT NULL
+  `isAdmin` tinyint(1) NOT NULL,
+  `PhoneNumber` varchar(15) NOT NULL,
+  `MonitorType` varchar(30) NOT NULL,
+  `SubscriptionType` int(10) NOT NULL COMMENT 'If there is not enough time to create something useful out of this column delete it before presenting the final project'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`Email`, `Username`, `Name`, `Password`, `isAdmin`) VALUES
-('a@a.a', 'a', 'a', '1', 1),
-('b@b.b', 'b', 'b', '1', 0);
+INSERT INTO `users` (`Email`, `Name`, `Password`, `isAdmin`, `PhoneNumber`, `MonitorType`, `SubscriptionType`) VALUES
+('a@a.a', 'a', '1', 1, '', '', 0),
+('b@b.b', 'b', '1', 0, '', '', 0);
 
 --
 -- Indexes for dumped tables
@@ -300,6 +313,13 @@ ALTER TABLE `solar_system_data`
 ALTER TABLE `staff`
   ADD PRIMARY KEY (`Staff_ID`),
   ADD UNIQUE KEY `Phone Number` (`Phone Number`);
+
+--
+-- Indexes for table `useraddress`
+--
+ALTER TABLE `useraddress`
+  ADD PRIMARY KEY (`Address`),
+  ADD KEY `UserEmail` (`UserEmail`);
 
 --
 -- Indexes for table `users`
@@ -457,6 +477,12 @@ ALTER TABLE `solar_system_data`
   ADD CONSTRAINT `solar_system_data_ibfk_2` FOREIGN KEY (`EnvData_ID`) REFERENCES `environmental_data` (`EnvData_ID`),
   ADD CONSTRAINT `solar_system_data_ibfk_3` FOREIGN KEY (`EnergyProduction_ID`) REFERENCES `energy_production` (`Production_ID`),
   ADD CONSTRAINT `solar_system_data_ibfk_4` FOREIGN KEY (`Monitor_ID`) REFERENCES `monitors` (`Monitor_ID`);
+
+--
+-- Constraints for table `useraddress`
+--
+ALTER TABLE `useraddress`
+  ADD CONSTRAINT `UserEmail` FOREIGN KEY (`UserEmail`) REFERENCES `users` (`Email`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

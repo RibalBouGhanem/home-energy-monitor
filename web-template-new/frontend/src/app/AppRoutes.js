@@ -11,10 +11,10 @@ import AdminDashboard from "../pages/admin/AdminDashboard";
 import UsersList from "../pages/admin/UsersList";
 import UserCreate from "../pages/admin/UserCreate";
 // import UserDetail from "../pages/admin/UserDetail";
-// import HousesList from "../pages/admin/HousesList";
-// import MonitorsList from "../pages/admin/MonitorsList";
+import HousesList from "../pages/admin/HousesList";
+import MonitorsList from "../pages/admin/MonitorsList";
 // import MonitorDetail from "../pages/admin/MonitorDetail";
-// import ReadingsExplorer from "../pages/admin/ReadingsExplorer";
+import ReadingsExplorer from "../pages/admin/ReadingsExplorer";
 
 export default function AppRoutes() {
   return (
@@ -29,14 +29,13 @@ export default function AppRoutes() {
           <Route index element={<AdminDashboard />} />
           <Route path="users" element={<UsersList />} />
           <Route path="users/new" element={<UserCreate />} />
-          {/* <Route path="users/:id" element={<UserDetail />} />
-
           <Route path="houses" element={<HousesList />} />
-
           <Route path="monitors" element={<MonitorsList />} />
-          <Route path="monitors/:id" element={<MonitorDetail />} />
+          <Route path="readings" element={<ReadingsExplorer />} />
+          
+          {/* <Route path="users/:id" element={<UserDetail />} />
+          <Route path="monitors/:id" element={<MonitorDetail />} /> */}
 
-          <Route path="readings" element={<ReadingsExplorer />} /> */}
         </Route>
       </Route>
 

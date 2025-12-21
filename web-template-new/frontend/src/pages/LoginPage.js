@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import axios from "axios";
+import api from "../api/axios";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import ForgotPassword from "../components/forgotPassword";
@@ -7,7 +7,7 @@ import "../styles/LoginPage.css"
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const { setUser } = useAuth();
+  const { user, token, setUser, setToken } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,12 +19,16 @@ const LoginPage = () => {
     setError("");
 
     try {
-      const res = await axios.post("/login", { email, password });
+      const res = await api.post("/login", { email, password });
       setUser(res.data.user);
+      setToken(res.data.token);
 
       // role-based redirect
-      if (res.data.user.isAdmin) navigate("/admin");
-      else navigate("/");
+      if (res.data.user.isAdmin) {
+		navigate("/admin");
+	  } else {
+		navigate("/");
+	  }
     } catch (err) {
       setError(err.response?.data?.message || "Login failed");
 	  setStatus("error");
@@ -33,9 +37,6 @@ const LoginPage = () => {
 
 	return (
 		<main className="login-page">
-			{/* Optional: if you have a global <Navbar /> component, you’d render it above this main. */}
-
-			{/* Background elements to match hero section */}
 			<div className="login-hero-bg" />
 			<div className="login-geometric-shapes">
 				<div className="shape shape1" />

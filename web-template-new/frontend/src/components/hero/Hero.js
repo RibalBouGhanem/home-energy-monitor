@@ -1,4 +1,3 @@
-// src/components/Hero.jsx
 import React from "react";
 import Shapes from "./shapes"
 import Buildings from "./buildings"

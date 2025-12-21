@@ -1,11 +1,8 @@
 import React, { useState } from "react";
-import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import api from "../../api/axios";
 import "../../styles/UserCreate.css";
 
 export default function UserCreate() {
-  const navigate = useNavigate();
-
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
@@ -29,7 +26,7 @@ export default function UserCreate() {
     setError("");
 
     try {
-      await axios.post("/api/users", { email, name, password, phoneNumber, monitorType, subscriptionType});
+      await api.post("/api/users", { email, name, password, phoneNumber, monitorType, subscriptionType});
 
       setError("success");
       setStatusMsg("User created successfully");

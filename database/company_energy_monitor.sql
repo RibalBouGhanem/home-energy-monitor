@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Dec 16, 2025 at 04:16 PM
+-- Generation Time: Dec 21, 2025 at 11:09 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -93,19 +93,6 @@ CREATE TABLE `environmental_data` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `maintenance`
---
-
-CREATE TABLE `maintenance` (
-  `Maintenance_ID` int(11) NOT NULL,
-  `User_Email` varchar(30) NOT NULL,
-  `DateTime` datetime NOT NULL,
-  `Details` varchar(1000) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
 -- Table structure for table `monitors`
 --
 
@@ -167,23 +154,6 @@ CREATE TABLE `solar_system_data` (
   `Exact_Panel_Production` float NOT NULL,
   `Panel_Efficiency` float NOT NULL,
   `Total_Energy_Generated` float NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `staff`
---
-
-CREATE TABLE `staff` (
-  `Staff_ID` int(11) NOT NULL,
-  `Name` int(11) NOT NULL,
-  `Email` int(11) NOT NULL,
-  `Password` int(11) NOT NULL,
-  `Address` varchar(50) NOT NULL,
-  `Age` int(11) NOT NULL,
-  `Role` varchar(25) NOT NULL,
-  `Phone Number` varchar(18) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -263,13 +233,6 @@ ALTER TABLE `environmental_data`
   ADD KEY `Monitor_ID` (`Monitor_ID`);
 
 --
--- Indexes for table `maintenance`
---
-ALTER TABLE `maintenance`
-  ADD PRIMARY KEY (`Maintenance_ID`),
-  ADD KEY `User_Email` (`User_Email`);
-
---
 -- Indexes for table `monitors`
 --
 ALTER TABLE `monitors`
@@ -306,13 +269,6 @@ ALTER TABLE `solar_system_data`
   ADD KEY `EnvData_ID` (`EnvData_ID`),
   ADD KEY `EnergyProduction_ID` (`EnergyProduction_ID`),
   ADD KEY `Monitor_ID` (`Monitor_ID`);
-
---
--- Indexes for table `staff`
---
-ALTER TABLE `staff`
-  ADD PRIMARY KEY (`Staff_ID`),
-  ADD UNIQUE KEY `Phone Number` (`Phone Number`);
 
 --
 -- Indexes for table `useraddress`
@@ -362,12 +318,6 @@ ALTER TABLE `environmental_data`
   MODIFY `EnvData_ID` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `maintenance`
---
-ALTER TABLE `maintenance`
-  MODIFY `Maintenance_ID` int(11) NOT NULL AUTO_INCREMENT;
-
---
 -- AUTO_INCREMENT for table `monitors`
 --
 ALTER TABLE `monitors`
@@ -390,12 +340,6 @@ ALTER TABLE `sell_request`
 --
 ALTER TABLE `solar_system_data`
   MODIFY `SolarData_ID` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `staff`
---
-ALTER TABLE `staff`
-  MODIFY `Staff_ID` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- Constraints for dumped tables
@@ -432,12 +376,6 @@ ALTER TABLE `energy_reserves`
 --
 ALTER TABLE `environmental_data`
   ADD CONSTRAINT `environmental_data_ibfk_1` FOREIGN KEY (`Monitor_ID`) REFERENCES `monitors` (`Monitor_ID`);
-
---
--- Constraints for table `maintenance`
---
-ALTER TABLE `maintenance`
-  ADD CONSTRAINT `maintenance_ibfk_1` FOREIGN KEY (`User_Email`) REFERENCES `users` (`Email`);
 
 --
 -- Constraints for table `monitors`

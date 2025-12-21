@@ -31,24 +31,117 @@
 
 .admin-table {
   margin-top: 16px;
-  border-radius: 12px;
+  border-radius: 14px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
 }
 
-.admin-table button {
-  color: red;
+.admin-table-scroll {
+  overflow-x: auto;
 }
 
-.admin-table-row {
-  display: grid;
-  grid-template-columns: 1fr 120px;
-  gap: 12px;
-  padding: 12px 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+.admin-table-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 860px; /* helps layout stay clean, scroll on small screens */
 }
 
-.admin-table-head {
+
+.admin-table-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  text-align: left;
   font-weight: 700;
+  font-size: 0.92rem;
+  letter-spacing: 0.2px;
+  padding: 12px 14px;
+  background: rgba(15, 15, 18, 0.9);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+  backdrop-filter: blur(8px);
+}
+
+.admin-table-table tbody td {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  font-size: 0.95rem;
   opacity: 0.95;
+  vertical-align: middle;
+}
+
+.admin-table-table tbody tr {
+  transition: background 160ms ease, transform 160ms ease;
+}
+
+.admin-table-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.admin-table-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.th-actions,
+.td-actions {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.danger-btn {
+  border: 1px solid rgba(255, 107, 107, 0.35);
+  background: rgba(255, 107, 107, 0.10);
+  color: #ff6b6b;
+  padding: 8px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.danger-btn:hover {
+  background: rgba(255, 107, 107, 0.18);
+}
+
+@media (max-width: 900px) {
+  .admin-table-table {
+    min-width: 0;
+    width: 100%;
+  }
+
+  /* “Card rows” on mobile */
+  .admin-table-table thead {
+    display: none;
+  }
+
+  .admin-table-table,
+  .admin-table-table tbody,
+  .admin-table-table tr,
+  .admin-table-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .admin-table-table tr {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+    padding: 10px 12px;
+  }
+
+  .admin-table-table td {
+    border: none;
+    padding: 8px 0;
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+  }
+
+  .admin-table-table td::before {
+    content: attr(data-label);
+    opacity: 0.7;
+    font-weight: 600;
+  }
+
+  .td-actions {
+    justify-content: flex-end;
+  }
 }

@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import "../styles/Navbar.css";
 
 export default function Navbar() {
-  const { user, setUser } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -15,9 +16,9 @@ export default function Navbar() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  const logout = () => {
-    setUser(null);
-    setOpen(false);
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
   };
 
   const links = user?.isAdmin
@@ -68,7 +69,7 @@ export default function Navbar() {
               Log in
             </NavLink>
           ) : (
-            <button type="button" className="nav-auth-link nav-auth-button" onClick={logout}>
+            <button type="button" className="nav-auth-link nav-auth-button" onClick={handleLogout}>
               Log out
             </button>
           )}

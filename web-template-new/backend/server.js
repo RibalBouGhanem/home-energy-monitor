@@ -53,7 +53,9 @@ app.post("/login", (req, res) => {
         user: {
             email: user.email,
             isAdmin: user.isAdmin === 1,
-    }});
+        },
+        token: "authenticated"
+    });
   });
 });
 

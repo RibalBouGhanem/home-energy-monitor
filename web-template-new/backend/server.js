@@ -69,22 +69,34 @@ app.get("/api/users", (req, res) => {
 });
 
 app.post("/api/users", (req, res) => {
-  const q = "INSERT INTO users (email, name, password, PhoneNumber, MonitorType, SubscriptionType) VALUES (?, ?, ?, ?, ?, ?)";
+  const q = "INSERT INTO users (email, name, password, isAdmin, phoneNumber, monitorType, subscriptionType) VALUES (?, ?, ?, 0, ?, ?, ?)";
   const values = [
     req.body.email,
     req.body.name,
     req.body.password,
-    req.body.PhoneNumber,
-    req.body.MonitorType,
-    req.body.SubscriptionType
+    req.body.phoneNumber,
+    req.body.monitorType,
+    req.body.subscriptionType
   ];
   db.query(q, values, (err, data) => {
     if (err) {
-      console.log("USERS DB ERROR:", err);
+      console.log("USERS POST DB ERROR:", err);
       return res.status(500).json({ message: "DB error" });
     }
     return res.json({ message: "User created successfully" });
   });
+});
+
+app.delete("/users/:email", (req, res) => {
+  const email = req.params.email;
+  const q = "DELETE FROM users WHERE Email = ?";
+  db.query(q, [email], (err, data) => {
+    if (err) {
+      console.log("USERS DELETE DB ERROR:", err);
+      return res.status(500).json({ message: "DB error"});
+    }
+    return res.json({ message: "User deleted successfully" });
+  })
 });
 
 app.listen(5000, () => console.log("Backend running on http://localhost:5000"));

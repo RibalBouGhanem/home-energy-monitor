@@ -269,8 +269,6 @@
 	margin-bottom: 14px;
 }
 
-/* Reuse your existing .cta-button styles; this just adds some hover tweaks */
-
 .login-submit.cta-button {
 	border-radius: 999px;
 	font-weight: 600;

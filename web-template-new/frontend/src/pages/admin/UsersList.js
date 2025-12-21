@@ -7,6 +7,11 @@ export default function UsersList() {
   const [users, setUsers] = useState([]);
   const [err, setErr] = useState("");
 
+  const deleteUser = async (email) => {
+    await axios.delete(`/api/users/${email}`);
+    window.location.reload();
+  }
+
   useEffect(() => {
     axios
       .get("/api/users")
@@ -32,10 +37,16 @@ export default function UsersList() {
         </div>
 
         {users.map((u, idx) => (
-          <div key={idx} className="admin-table-row">
-            <div>{u.email}</div>
-            <div>{u.isAdmin ? "Yes" : "No"}</div>
-          </div>
+          <tr key={idx} className="admin-table-row">
+            <td>{u.email}</td>
+            <td>{u.name}</td>
+            <td>{u.phoneNumber}</td>
+            <td>{u.monitorType}</td>
+            <td>{u.subscriptionType}</td>
+            <td>
+            <button onClick={deleteUser(u.email)}></button>
+            </td>
+          </tr>
         ))}
       </div>
     </section>

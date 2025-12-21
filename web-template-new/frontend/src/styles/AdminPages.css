@@ -36,6 +36,10 @@
   border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
+.admin-table button {
+  color: red;
+}
+
 .admin-table-row {
   display: grid;
   grid-template-columns: 1fr 120px;

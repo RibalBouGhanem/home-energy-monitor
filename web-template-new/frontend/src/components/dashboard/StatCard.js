@@ -1,6 +1,6 @@
 // src/components/dashboard/StatCard.jsx
 import React, { useEffect } from "react";
-import { drawMiniChart } from "../../utils/charts";
+// import { drawMiniChart } from "../../utils/charts";
 
 export default function StatCard({
 	icon,
@@ -10,13 +10,13 @@ export default function StatCard({
 	chartId,
 	color,
 }) {
-	useEffect(() => {
-		if (!chartId || !color) return;
-		const timeout = setTimeout(() => {
-			drawMiniChart(chartId, color);
-		}, 100);
-		return () => clearTimeout(timeout);
-	}, [chartId, color]);
+	// useEffect(() => {
+	// 	if (!chartId || !color) return;
+	// 	const timeout = setTimeout(() => {
+	// 		drawMiniChart(chartId, color);
+	// 	}, 100);
+	// 	return () => clearTimeout(timeout);
+	// }, [chartId, color]);
 
 	return (
 		<div className="stat-card">

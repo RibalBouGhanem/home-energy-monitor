@@ -18,3 +18,33 @@
   padding: 8px 0;
   border-bottom: 1px solid #ccc;
 }
+
+.modal-form { display: grid;
+  gap: 10px;
+  margin: 10px 0 14px;
+}
+
+.modal-label {
+  font-weight: 600;
+}
+
+.modal-input {
+  padding: 10px 12px;
+  border: 1px solid rgba(0,0,0,0.15);
+  border-radius: 10px;
+}
+
+.modal-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.secondary-button {
+  border: 1px solid rgba(0,0,0,0.15);
+  background: #fff;
+  padding: 10px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+}

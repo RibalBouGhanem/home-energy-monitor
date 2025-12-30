@@ -1,0 +1,27 @@
+.houses-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.houses-filters {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  margin-bottom: 14px;
+}
+
+.houses-clear {
+  height: 40px;
+}
+
+.houses-empty {
+  text-align: center;
+  padding: 18px;
+  opacity: 0.85;
+}
+
+.houses-ids {
+  max-width: 520px;
+}

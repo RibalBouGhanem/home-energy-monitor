@@ -1,0 +1,101 @@
+/* Right-side header actions */
+.monitors-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* Controls row (matches form layout style you already use) */
+.monitors-controls {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+/* Make search wider than status filter */
+.monitors-search {
+  min-width: 320px;
+  flex: 1;
+}
+
+.monitors-status {
+  width: 220px;
+}
+
+/* Centered empty/loading row */
+.monitors-empty {
+  text-align: center;
+  padding: 18px;
+  opacity: 0.85;
+}
+
+/* Actions column */
+.monitors-col-actions {
+  width: 280px;
+}
+
+/* Buttons layout in the actions cell */
+.monitors-actions-cell {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Optional: tighten buttons so they match table density */
+.monitors-actions-cell .secondary-button,
+.monitors-actions-cell .danger-button {
+  padding: 8px 12px;
+}
+
+.monitors-filters {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  margin-bottom: 14px;
+}
+
+.monitors-clear {
+  height: 40px;
+}
+
+/* Make Sort control match SearchableSelect fields */
+.monitors-sort .ss-control {
+  padding-right: 0; /* select already has padding */
+}
+
+.monitors-sort .ss-input {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  cursor: pointer;
+
+  /* Keep same padding rhythm as the searchable fields */
+  padding: 10px 40px 10px 12px;
+}
+
+/* Static caret that matches the SearchableSelect caret */
+.ss-caret.static {
+  pointer-events: none;
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(229,231,235,0.75);
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+
+/* Hover/focus feel consistent with your existing controls */
+.monitors-sort .ss-control:hover .ss-caret.static {
+  background: rgba(255,255,255,0.06);
+  color: #f8fafc;
+}
+
+/* Optional: keep it from stretching too wide */
+.monitors-sort {
+  min-width: 220px;
+}

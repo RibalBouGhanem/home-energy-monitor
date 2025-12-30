@@ -145,3 +145,126 @@
     justify-content: flex-end;
   }
 }
+
+/* ===== Confirmation Modal (Admin Theme) ===== */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 15, 25, 0.7); /* dark overlay */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.modal {
+  background: #0f172a; /* slate-900 */
+  color: #e5e7eb; /* gray-200 */
+  border-radius: 14px;
+  padding: 22px;
+  width: min(420px, calc(100vw - 32px));
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.modal-title {
+  margin: 0 0 10px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #f8fafc; /* near-white */
+}
+
+.modal-text {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #cbd5f5; /* muted text */
+  margin-bottom: 18px;
+}
+
+.modal-text b {
+  color: #fca5a5; /* soft red highlight for email */
+}
+
+/* ===== Modal Actions ===== */
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* ===== Buttons ===== */
+
+.danger-button {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.danger-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(220, 38, 38, 0.35);
+}
+
+.secondary-button {
+  background: transparent;
+  color: #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 10px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.secondary-button:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #f8fafc;
+}
+
+/* ===== Subtle Animations ===== */
+
+.modal-fade {
+  animation: modalFadeIn 160ms ease-out;
+}
+
+.modal-pop {
+  animation: modalPopIn 180ms ease-out;
+  transform-origin: center;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalPopIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Optional: respects reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .modal-fade,
+  .modal-pop {
+    animation: none !important;
+  }
+}
+
+.field-hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  opacity: 0.8;
+}

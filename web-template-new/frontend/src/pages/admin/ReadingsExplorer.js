@@ -223,113 +223,102 @@ export default function ReadingsExplorer() {
       {err && <div className="admin-error">{err}</div>}
       
       {readingsData && (
-        <div className="readings-split">
-          <div className="readings-left">
-          <DataTable
-            title="Energy Consumption"
-            rows={readingsData.energy_consumption} 
-            onRowHover={(row) => {
-              const idx = consumptionIndexByTs.get(String(row.Timestamp));
-              highlightPoint(consumptionChartRef.current, idx);
-            }}
-            onRowLeave={() => clearHighlight(consumptionChartRef.current)}
-            highlightRow={(row) => {
-              const a = toMs(row.Timestamp);
-              const b = Number(hoverConsumptionX);
-              return a != null && b != null && a === b;
-            }}
-            scrollToHighlighted
-          />
-          <DataTable
-            title="Energy Production"
-            rows={readingsData.energy_production} 
-            onRowHover={(row) => {
-              const idx = productionIndexByTs.get(String(row.Timestamp));
-              highlightPoint(productionChartRef.current, idx);
-            }}
-            onRowLeave={() => clearHighlight(productionChartRef.current)}
-            highlightRow={(row) => {
-              const a = toMs(row.Timestamp);
-              const b = Number(hoverProductionX);
-              return a != null && b != null && a === b;
-            }}
-            scrollToHighlighted
-          />
-          <DataTable
-            title="Environmental Data"
-            rows={readingsData.environmental_data} 
-            onRowHover={(row) => {
-              const idx = environmentalIndexByTs.get(String(row.Timestamp));
-              highlightPoint(environmentalChartRef.current, idx);
-            }}
-            onRowLeave={() => clearHighlight(environmentalChartRef.current)}
-            highlightRow={(row) => {
-              const a = toMs(row.Timestamp);
-              const b = Number(hoverEnvironmentalX);
-              return a != null && b != null && a === b;
-            }}
-            scrollToHighlighted
-          />
-          {/* <DataTable
-            title="Energy Reserves"
-            rows={readingsData.energy_reserves} 
-            onRowHover={(row) => {
-              const idx = reservesIndexByTs.get(String(row.Timestamp));
-              highlightPoint(reservesChartRef.current, idx);
-            }}
-            onRowLeave={() => clearHighlight(reservesChartRef.current)}
-            />
-          <DataTable
-            title="Solar Panel Data"
-            rows={readingsData.panel_data} 
-            onRowHover={(row) => {
-              const idx = panelDataIndexByTs.get(String(row.Timestamp));
-              highlightPoint(panelDataChartRef.current, idx);
-            }}
-            onRowLeave={() => clearHighlight(panelDataChartRef.current)} //TODO: define panelDataChartRef and the other missing refs
-            /> */}
-          <DataTable title="Sell Requests" rows={readingsData.sell_request} />
-          <DataTable title="Notifications" rows={readingsData.notifications} />
+        <div className="readings-rows">
+          <div className="readings-row">
+            <div className="readings-table">
+              <DataTable
+                title="Energy Consumption"
+                rows={readingsData.energy_consumption} 
+                onRowHover={(row) => {
+                  const idx = consumptionIndexByTs.get(String(row.Timestamp));
+                  highlightPoint(consumptionChartRef.current, idx);
+                }}
+                onRowLeave={() => clearHighlight(consumptionChartRef.current)}
+                highlightRow={(row) => {
+                  const a = toMs(row.Timestamp);
+                  const b = Number(hoverConsumptionX);
+                  return a != null && b != null && a === b;
+                }}
+              />
+            </div>
+            <div className="readings-chart">
+              <ChartCard title="Consumption">
+                <LineTimeChart
+                  id="consumptionChart"
+                  rows={readingsData.energy_consumption}
+                  xKey="Timestamp"
+                  yKeys={consumptionYKeys}
+                  labels={consumptionLabels}
+                  chartRef={consumptionChartRef}
+                  onHoverX={(x) => setHoverConsumptionX(x)}
+                  />
+              </ChartCard>
+            </div>
           </div>
-          <div className="readings-right">
-            <h3 className="charts-title">Overview</h3>
 
-            <ChartCard title="Consumption">
-              <LineTimeChart
-                id="consumptionChart"
-                rows={readingsData.energy_consumption}
-                xKey="Timestamp"
-                yKeys={consumptionYKeys}
-                labels={consumptionLabels}
-                chartRef={consumptionChartRef}
-                onHoverX={(x) => setHoverConsumptionX(x)}
+          <div className="readings-row">
+            <div className="readings-table">
+              <DataTable
+                title="Energy Production"
+                rows={readingsData.energy_production} 
+                onRowHover={(row) => {
+                  const idx = productionIndexByTs.get(String(row.Timestamp));
+                  highlightPoint(productionChartRef.current, idx);
+                }}
+                onRowLeave={() => clearHighlight(productionChartRef.current)}
+                highlightRow={(row) => {
+                  const a = toMs(row.Timestamp);
+                  const b = Number(hoverProductionX);
+                  return a != null && b != null && a === b;
+                }}
+                pageSize={8}
               />
-            </ChartCard>
+            </div>
+            <div className="readings-chart">
+              <ChartCard title="Production">
+                <LineTimeChart
+                  id="productionChart"
+                  rows={readingsData.energy_production}
+                  xKey="Timestamp"
+                  yKeys={productionYKeys}
+                  labels={productionLabels}
+                  chartRef={productionChartRef}
+                  onHoverX={(x) => setHoverProductionX(x)}
+                  />
+              </ChartCard>
+            </div>
+          </div>
 
-            <ChartCard title="Production">
-              <LineTimeChart
-                id="productionChart"
-                rows={readingsData.energy_production}
-                xKey="Timestamp"
-                yKeys={productionYKeys}
-                labels={productionLabels}
-                chartRef={productionChartRef}
-                onHoverX={(x) => setHoverProductionX(x)}
+          <div className="readings-row">
+            <div className="readings-table">
+              <DataTable
+                title="Environmental Data"
+                rows={readingsData.environmental_data} 
+                onRowHover={(row) => {
+                  const idx = environmentalIndexByTs.get(String(row.Timestamp));
+                  highlightPoint(environmentalChartRef.current, idx);
+                }}
+                onRowLeave={() => clearHighlight(environmentalChartRef.current)}
+                highlightRow={(row) => {
+                  const a = toMs(row.Timestamp);
+                  const b = Number(hoverEnvironmentalX);
+                  return a != null && b != null && a === b;
+                }}
               />
-            </ChartCard>
-
-            <ChartCard title="Environment">
-              <LineTimeChart
-                id="envChart"
-                rows={readingsData.environmental_data}
-                xKey="Timestamp"
-                yKeys={envYKeys}
-                labels={envLabels}
-                chartRef={environmentalChartRef}
-                onHoverX={(x) => setHoverEnvironmentalX(x)}
-                // onHoverY={(y) => setHoverProductionY(y)}
-              />
-            </ChartCard>
+            </div>
+            <div className="readings-chart">
+              <ChartCard title="Environmental Data">
+                <LineTimeChart
+                  id="environmentalChart"
+                  rows={readingsData.environmental_data}
+                  xKey="Timestamp"
+                  yKeys={envYKeys}
+                  labels={envLabels}
+                  chartRef={environmentalChartRef}
+                  onHoverX={(x) => setHoverEnvironmentalX(x)}
+                  />
+              </ChartCard>
+            </div>
           </div>
         </div>
       )}

@@ -33,11 +33,11 @@ export default function MonitorsList() {
   // ====== Helpers (FIXES YOUR no-undef ERRORS) ======
   const normalize = (v) => (v ?? "").toString().toLowerCase();
 
-  const getMonitorId = (m) => (m.Monitor_ID ?? m.monitorId ?? m.id ?? "").toString();
-  const getUserEmail = (m) => (m.User_Email ?? m.userEmail ?? m.email ?? "").toString();
-  const getLocation = (m) => (m.Location ?? m.location ?? "").toString();
-  const getStatus = (m) => (m.Status ?? m.status ?? "").toString();
-  const getMicro = (m) => (m.Microprocessor_Type ?? m.microprocessorType ?? "").toString();
+  const getMonitorId = (m) => (m.Monitor_ID ?? "").toString();
+  const getUserEmail = (m) => (m.User_Email ?? "").toString();
+  const getLocation = (m) => (m.Location ?? "").toString();
+  const getStatus = (m) => (m.Status ?? "").toString();
+  const getMicro = (m) => (m.Microprocessor_Type ?? "").toString();
   const getInstall = (m) => {
     const raw = m.Installation_Date ?? m.installationDate ?? "";
     const s = (raw ?? "").toString();

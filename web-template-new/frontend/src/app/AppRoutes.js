@@ -18,11 +18,10 @@ import AdminLayout from "../layouts/AdminLayout";
 import AdminDashboard from "../pages/admin/AdminDashboard";
 import UsersList from "../pages/admin/UsersList";
 import UserCreate from "../pages/admin/UserCreate";
-// import UserDetail from "../pages/admin/UserDetail";
 import HousesList from "../pages/admin/HousesList";
 import MonitorsList from "../pages/admin/MonitorsList";
-// import MonitorDetail from "../pages/admin/MonitorDetail";
 import ReadingsExplorer from "../pages/admin/ReadingsExplorer";
+import SystemLogsPage from "../pages/admin/SystemLogs";
 
 export default function AppRoutes() {
   return (
@@ -49,6 +48,7 @@ export default function AppRoutes() {
           <Route path="houses" element={<HousesList />} />
           <Route path="monitors" element={<MonitorsList />} />
           <Route path="readings" element={<ReadingsExplorer />} />
+          <Route path="system-logs" element={<SystemLogsPage />} />
         </Route>
       </Route>
 

@@ -96,3 +96,34 @@
   padding: 10px 12px;
   color: rgba(229,231,235,0.70);
 }
+
+.ss-menu {
+  max-height: 240px;
+  overflow: auto;
+}
+
+.ss-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ss-check {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(0,255,204,0.9);
+  flex: 0 0 18px;
+}
+
+.ss-option.is-selected .ss-check {
+  border-color: rgba(0,255,204,0.35);
+  background: rgba(0,255,204,0.35);
+}
+
+.ss-empty {
+  padding: 10px 12px;
+  opacity: 0.8;
+}

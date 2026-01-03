@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import "../styles/SearchableSelect.css";
 
+const normalize = (str) => str.toString().toLowerCase();
+
 export default function SearchableSelect({
   label,
   value,
@@ -9,10 +11,14 @@ export default function SearchableSelect({
   placeholder = "All",
   allowAll = true,
   searchable = true,
+  multiple = false,
 }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState(value ?? "");
+  const [query, setQuery] = useState("");
+
   const wrapRef = useRef(null);
+  const inputRef = useRef(null);
 
   // Keep input text in sync if parent changes it
   useEffect(() => {
@@ -25,50 +31,92 @@ export default function SearchableSelect({
       if (!wrapRef.current) return;
       if (!wrapRef.current.contains(e.target)) setOpen(false);
     };
-    document.addEventListener("mousedown", onDocMouseDown);
-    return () => document.removeEventListener("mousedown", onDocMouseDown);
+    document.addEventListener("click", onDocMouseDown);
+    return () => document.removeEventListener("click", onDocMouseDown);
   }, []);
 
   // Support options as strings OR {value,label}
-  const normalizedOptions = useMemo(() => {
-    const list = (options || [])
-      .map((opt) => {
-        if (typeof opt === "string") return { value: opt, label: opt };
-        return { value: opt?.value ?? "", label: opt?.label ?? "" };
-      })
-      .filter((x) => x.value);
-
-    // unique by value
-    const seen = new Set();
-    const uniq = [];
-    for (const item of list) {
-      if (!seen.has(item.value)) {
-        seen.add(item.value);
-        uniq.push(item);
+    const opts = useMemo(() => {
+    // supports strings or {value,label}
+    return (options || []).map((o) => {
+      if (o && typeof o === "object") {
+        const v = (o.value ?? o.label ?? "").toString();
+        const l = (o.label ?? o.value ?? "").toString();
+        return { value: v, label: l };
       }
-    }
-    return uniq;
+      return { value: (o ?? "").toString(), label: (o ?? "").toString() };
+    });
   }, [options]);
 
   // Filter options only when searchable is enabled
-  const filteredOptions = useMemo(() => {
-    if (!searchable) return normalizedOptions;
+  const filtered = useMemo(() => {
+    const q = normalize(query).trim();
+    if (!q) return opts;
+    return opts.filter((o) => normalize(o.label).includes(q) || normalize(o.value).includes(q));
+  }, [opts, query]);
 
-    const q = (text ?? "").toString().trim().toLowerCase();
-    if (!q) return normalizedOptions;
-    return normalizedOptions.filter((opt) => opt.label.toLowerCase().includes(q));
-  }, [normalizedOptions, searchable, text]);
+  const selectedValues = useMemo(() => {
+    if (multiple) return Array.isArray(value) ? value.map(String) : [];
+    return value ? [String(value)] : [];
+  }, [value, multiple]);
 
+   const selectedLabel = useMemo(() => {
+    if (multiple) {
+      if (!selectedValues.length) return "";
+      // show "3 selected" style to keep UI compact
+      if (selectedValues.length === 1) {
+        const one = selectedValues[0];
+        const found = opts.find((x) => x.value === one);
+        return found?.label ?? one;
+      }
+      return `${selectedValues.length} selected`;
+    }
+    const v = selectedValues[0];
+    if (!v) return "";
+    const found = opts.find((x) => x.value === v);
+    return found?.label ?? v;
+  }, [multiple, selectedValues, opts]);
+  
+  const close = () => {
+    setOpen(false);
+    setQuery("");
+  };
+
+  useEffect(() => {
+    const onDoc = (e) => {
+      if (!wrapRef.current) return;
+      if (!wrapRef.current.contains(e.target)) close();
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  const isSelected = (val) => selectedValues.includes(String(val));
+
+  const pickSingle = (val) => {
+    onChange?.(String(val));
+    close();
+  };
+
+  const toggleMulti = (val) => {
+    const s = String(val);
+    const next = isSelected(s)
+      ? selectedValues.filter((x) => x !== s)
+      : [...selectedValues, s];
+    onChange?.(next);
+    // keep open for multi
+    if (inputRef.current) inputRef.current.focus();
+  };
+  
   const selectOption = (opt) => {
     setText(opt.label);
     onChange(opt.value);
     setOpen(false);
   };
 
-  const clear = () => {
-    setText("");
-    onChange("");
-    setOpen(false);
+  const clearAll = () => {
+    onChange?.(multiple ? [] : "");
+    close();
   };
 
   const handleInput = (e) => {
@@ -76,7 +124,7 @@ export default function SearchableSelect({
     const v = e.target.value;
     setText(v);
     setOpen(true);
-    // live filter the table as you type (your original behavior)
+    // live filter the table as you type
     onChange(v);
   };
 
@@ -84,21 +132,23 @@ export default function SearchableSelect({
     <div className="ss-field" ref={wrapRef}>
       {label ? <label className="ss-label">{label}</label> : null}
 
-      <div className={`ss-control ${open ? "is-open" : ""}`}>
+      <div 
+        className="ss-control"
+        onClick={(e) => {
+          e.preventDefault();
+          setOpen(true);
+          setTimeout(() => inputRef.current?.focus(), 0);
+        }}
+      >
         <input
+          ref={inputRef}
           className="ss-input"
-          value={text}
-          onChange={handleInput}
-          onFocus={() => setOpen(true)}
-          placeholder={placeholder}
+          value={open && searchable ? query : selectedLabel}
+          placeholder={selectedLabel ? "" : placeholder}
           readOnly={!searchable}
+          onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => setOpen(true)}
         />
-
-        {searchable && !!text && (
-          <button type="button" className="ss-clear" onClick={clear} aria-label="Clear">
-            ×
-          </button>
-        )}
 
         <button
           type="button"
@@ -116,25 +166,37 @@ export default function SearchableSelect({
             <button
               type="button"
               className="ss-option"
-              onClick={() => selectOption({ value: "", label: "All" })}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={clearAll}
             >
-              All
+              {multiple ? "Clear Selection" : "All"}
             </button>
           )}
 
-          {filteredOptions.length === 0 ? (
+          {filtered.length === 0 ? (
             <div className="ss-empty">No matches</div>
           ) : (
-            filteredOptions.map((opt) => (
-              <button
-                type="button"
-                className="ss-option"
-                key={opt.value}
-                onClick={() => selectOption(opt)}
-              >
-                {opt.label}
-              </button>
-            ))
+            filtered.map((opt) => {
+              const checked = isSelected(opt.value);
+              return (
+                <button
+                  key={`${opt.value}-${opt.label}`}
+                  type="button"
+                  className={`ss-option ${checked ? 'is-selected' : ''}`}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    if (multiple) toggleMulti(opt.value);
+                    else pickSingle(opt.value);
+                  }}
+                >
+                  {multiple && <span className="ss-check" aria-hidden="true">{checked ? "☑" : "☐"}</span>}
+                  <span className="ss-option-text">{opt.label}</span>
+                </button>
+              );
+              
+            })
           )}
         </div>
       )}

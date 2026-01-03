@@ -25,9 +25,10 @@ export default function Navbar() {
     ? [
         { to: "/admin", label: "Dashboard", end: true },
         { to: "/admin/users", label: "Users" },
-        { to: "/admin/houses", label: "Houses" },
         { to: "/admin/monitors", label: "Monitors" },
+        { to: "/admin/houses", label: "Houses" },
         { to: "/admin/readings", label: "Readings" },
+        { to: "/admin/system-logs", label: "System Logs" },
       ]
     : [
         { to: "/", label: "Home", end: true },

@@ -55,10 +55,12 @@
   flex-wrap: wrap;
   align-items: flex-end;
   margin-bottom: 14px;
+
 }
 
 .monitors-clear {
   height: 40px;
+  margin-left: 860px;
 }
 
 /* Make Sort control match SearchableSelect fields */

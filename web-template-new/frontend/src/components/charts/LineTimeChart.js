@@ -2,8 +2,14 @@ import React, { useEffect, useMemo, useRef } from "react";
 import Chart from "chart.js/auto";
 
 function toTs(v) {
-  const t = new Date(v).getTime();
-  return Number.isFinite(t) ? t : null;
+  try {
+    const t = new Date(v).getTime();
+    return t;
+  } catch {
+    console.log("There is not time written");
+    const t = new Date(v).getDate();
+    return t;
+  }
 }
 
 export default function LineTimeChart({
@@ -32,6 +38,8 @@ export default function LineTimeChart({
 
     return data;
   }, [rows, xKey]);
+  console.log("prepared length", prepared.length, "first ts", prepared[0]?.__ts, "last ts", prepared.at(-1)?.__ts);
+
 
   useEffect(() => {
     onHoverXRef.current = onHoverX || null;
@@ -51,7 +59,7 @@ export default function LineTimeChart({
       data: prepared.map((r) => Number(r?.[k] ?? null)),
       spanGaps: true,
       tension: 0.3,
-      pointRadius: 0,
+      pointRadius: 5,
     }));
 
     const chart = new Chart(canvasRef.current, {
@@ -90,9 +98,9 @@ export default function LineTimeChart({
         scales: {
           x: {
             ticks: {
-              callback: (v, idx, ticks) => {
-                const ts = ticks?.[idx]?.value;
-                return ts ? new Date(Number(ts)).toLocaleDateString() : "";
+              callback: (_value, index) => {
+                const ts = prepared[index]?.__ts;
+                return ts ? new Date(ts).toLocaleDateString() : "";
               },
               maxRotation: 0,
               autoSkip: true,

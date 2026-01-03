@@ -7,7 +7,6 @@ export default function UsersList() {
   const [users, setUsers] = useState([]);
   const [err, setErr] = useState("");
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [editOriginalEmail, setEditOriginalEmail] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editName, setEditName] = useState("");
   const [editPhoneNumber, setEditPhoneNumber] = useState("");
@@ -36,7 +35,6 @@ export default function UsersList() {
 
     const openEdit = (u) => {
       setErr("");
-      setEditOriginalEmail(u.email);
       setEditEmail(u.email);
       setEditName(u.name);
       setEditPhoneNumber(u.phoneNumber);
@@ -47,7 +45,6 @@ export default function UsersList() {
 
     const closeEdit = () => {
       setIsEditOpen(false);
-      setEditOriginalEmail("");
       setEditEmail("");
       setEditName("");
       setEditPhoneNumber("");
@@ -68,12 +65,7 @@ export default function UsersList() {
           subscriptionType: editSubscriptionType,
         };
 
-        const res = await api.put(
-          `/api/accounts/${encodeURIComponent(editOriginalEmail)}`,
-          payload
-        );
-
-        const updatedUser = res.data?.user ?? { email: editOriginalEmail, isAdmin: editName };
+        await api.put(`/api/accounts/${encodeURIComponent(editEmail)}`, payload);
 
         closeEdit();
       } catch (err) {

@@ -8,15 +8,14 @@ import "../../styles/MonitorsList.css";
 
 export default function MonitorsList() {
   const navigate = useNavigate();
-  const sortOptions = [
-    { value: "asc", label: "Monitor ID ↑" },
-    { value: "desc", label: "Monitor ID ↓" },
-  ];
-
+  
   const [monitors, setMonitors] = useState([]);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(true);
 
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  
   // DELETE modal
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
@@ -30,7 +29,7 @@ export default function MonitorsList() {
   const [editInstallDate, setEditInstallDate] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // ====== Helpers (FIXES YOUR no-undef ERRORS) ======
+  // ====== Helpers ======
   const normalize = (v) => (v ?? "").toString().toLowerCase();
 
   const getMonitorId = (m) => (m.Monitor_ID ?? "").toString();
@@ -38,13 +37,10 @@ export default function MonitorsList() {
   const getLocation = (m) => (m.Location ?? "").toString();
   const getStatus = (m) => (m.Status ?? "").toString();
   const getMicro = (m) => (m.Microprocessor_Type ?? "").toString();
-  const getInstall = (m) => {
-    const raw = m.Installation_Date ?? m.installationDate ?? "";
-    const s = (raw ?? "").toString();
-    return s.includes("T") ? s.split("T")[0] : s.slice(0, 10);
-  };
+  const getInstall = (m) => (m.Installation_Date ?? "").toString();
 
   // ====== Column filters (searchable selects) ======
+  const [sortKey, setSortKey] = useState("Monitor_ID");
   const [sortDir, setSortDir] = useState("asc");
   const [fEmail, setFEmail] = useState("");
   const [fLocation, setFLocation] = useState("");
@@ -72,18 +68,37 @@ export default function MonitorsList() {
 
   // Build dropdown options per column
   const emailOptions = useMemo(() => monitors.map(getUserEmail).filter(Boolean), [monitors]);
-  const locationOptions = useMemo(() => monitors.map(getLocation).filter(Boolean), [monitors]);
+  const locationOptions = useMemo(() => ["Abu Dhabi", "Ajman", "Al Ain", "Dubai", "Fujairah", "Ras Al Khaimah", "Sharjah"], []);
   const statusOptions = useMemo(() => monitors.map(getStatus).filter(Boolean), [monitors]);
   const microOptions = useMemo(() => monitors.map(getMicro).filter(Boolean), [monitors]);
   const installOptions = useMemo(() => monitors.map(getInstall).filter(Boolean), [monitors]);
 
+  const toggleSort = (key) => {
+  if (sortKey === key) {
+    setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+  } else {
+    setSortKey(key);
+    setSortDir("asc");
+  }
+};
+
+
+  
   // Actual row filtering: each filter only affects its own column
   const filtered = useMemo(() => {
   const contains = (cell, typed) => normalize(cell).includes(normalize(typed).trim());
+  const getEmirateFromLocation = (loc) => {
+      const s = (loc ?? "").toString();
+      return normalize(s.split(/[-]/)[0]).trim();
+    };
 
   const rows = monitors.filter((m) => {
     if (fEmail && !contains(getUserEmail(m), fEmail)) return false;
-    if (fLocation && !contains(getLocation(m), fLocation)) return false;
+    if (fLocation) {
+        const emirate = getEmirateFromLocation(getLocation(m));
+        const q = normalize(fLocation).trim();     // what user typed or selected
+        if (q && !(emirate.startsWith(q) || contains(getLocation(m), fLocation))) return false;
+      }
     if (fStatus && !contains(getStatus(m), fStatus)) return false;
     if (fMicro && !contains(getMicro(m), fMicro)) return false;
     if (fInstall && !contains(getInstall(m), fInstall)) return false;
@@ -91,27 +106,39 @@ export default function MonitorsList() {
   });
 
   // sort by numeric monitor id if possible, else string compare fallback
-  const toNum = (v) => {
+    const toNum = (v) => {
     const n = Number(v);
     return Number.isFinite(n) ? n : null;
   };
 
-  rows.sort((a, b) => {
-    const aId = getMonitorId(a);
-    const bId = getMonitorId(b);
+  const getCellBySortKey = (m) => {
+    // map sort keys to the values you already display
+    if (sortKey === "Monitor_ID") return getMonitorId(m);
+    if (sortKey === "User_Email") return getUserEmail(m);
+    if (sortKey === "Location") return getLocation(m);
+    if (sortKey === "Status") return getStatus(m);
+    if (sortKey === "Microprocessor_Type") return getMicro(m);
+    if (sortKey === "Installation_Date") return getInstall(m);
+    return "";
+  };
 
-    const aN = toNum(aId);
-    const bN = toNum(bId);
+  rows.sort((a, b) => {
+    const av = getCellBySortKey(a);
+    const bv = getCellBySortKey(b);
+
+    // numeric sort if both are numeric-looking
+    const aN = toNum(av);
+    const bN = toNum(bv);
 
     let cmp = 0;
     if (aN !== null && bN !== null) cmp = aN - bN;
-    else cmp = aId.localeCompare(bId);
+    else cmp = av.localeCompare(bv);
 
     return sortDir === "asc" ? cmp : -cmp;
   });
 
   return rows;
-}, [monitors, fEmail, fLocation, fStatus, fMicro, fInstall, sortDir]);
+}, [monitors, fEmail, fLocation, fStatus, fMicro, fInstall, sortDir, sortKey]);
 
 
   const clearFilters = () => {
@@ -200,20 +227,19 @@ export default function MonitorsList() {
 
       {/* Per-column filters */}
       <div className="monitors-filters">
-        <SearchableSelect
-          label="Sort"
-          value={sortOptions.label || sortOptions[0].label}
-          onChange={setSortDir}
-          options={sortOptions}
-          allowAll={false}
-          searchable={false}
-          placeholder="Select..."
-        />
         <SearchableSelect label="Owner Email" value={fEmail} onChange={setFEmail} options={emailOptions} />
         <SearchableSelect label="Location" value={fLocation} onChange={setFLocation} options={locationOptions} />
         <SearchableSelect label="Status" value={fStatus} onChange={setFStatus} options={statusOptions} />
         <SearchableSelect label="Microprocessor" value={fMicro} onChange={setFMicro} options={microOptions} />
         <SearchableSelect label="Installed" value={fInstall} onChange={setFInstall} options={installOptions} />
+
+        <div className="form-group filter-date">
+          <label htmlFor="from-date">From</label>
+          <input id="from-date" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+
+          <label htmlFor="to-date">To</label>
+          <input id="to-date" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+        </div>
 
         <button type="button" className="secondary-button monitors-clear" onClick={clearFilters}>
           Clear filters
@@ -226,12 +252,12 @@ export default function MonitorsList() {
         <table className="admin-table-table">
           <thead>
             <tr>
-              <th>Monitor ID</th>
-              <th>Owner Email</th>
-              <th>Location</th>
-              <th>Status</th>
-              <th>Microprocessor</th>
-              <th>Installed</th>
+              <th onClick={() => toggleSort("Monitor_ID")}>Monitor ID {(sortKey === "Monitor_ID" && sortDir === "asc") ? "↑" : "↓"}</th>
+              <th onClick={() => toggleSort("User_Email")}>Owner Email {sortKey === "User_Email" ? (sortDir === "asc" ? "↑" : "↓") : "↓"}</th>
+              <th onClick={() => toggleSort("Location")}>Location {sortKey === "Location" ? (sortDir === "asc" ? "↑" : "↓") : "↓"}</th>
+              <th onClick={() => toggleSort("Status")}>Status {sortKey === "Status" ? (sortDir === "asc" ? "↑" : "↓") : "↓"}</th>
+              <th onClick={() => toggleSort("Microprocessor_Type")}>Microprocessor {sortKey === "Microprocessor_Type" ? (sortDir === "asc" ? "↑" : "↓") : "↓"}</th>
+              <th onClick={() => toggleSort("Installation_Date")}>Installed {sortKey === "Installation_Date" ? (sortDir === "asc" ? "↑" : "↓") : "↓"}</th>
               <th className="monitors-col-actions">Actions</th>
             </tr>
           </thead>

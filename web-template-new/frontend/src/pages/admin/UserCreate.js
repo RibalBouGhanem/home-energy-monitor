@@ -1,21 +1,15 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import api from "../../api/axios";
 import "../../styles/UserCreate.css";
 
 export default function UserCreate() {
-  const navigate = useNavigate();
-  
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
-  const [address, setAddress] = useState([]);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [monitorType, setMonitorType] = useState("");
   const [subscriptionType, setSubscriptionType] = useState("");
 
-  
-  
   const [error, setError] = useState("");
   const [statusMsg, setStatusMsg] = useState("");
 
@@ -27,29 +21,15 @@ export default function UserCreate() {
     setMonitorType("");
     setSubscriptionType("");
   }
-
-  const editUser = async (e) => {
-    e.preventDefault();
-
-    try {
-      await api.post("/api/accounts", { email, name, password, address, phoneNumber, monitorType, subscriptionType});
-
-      setError("success");
-      setStatusMsg("User created successfully");
-
-      resetFields();
-    } catch (err) {
-      setError("error");
-      setStatusMsg("Failed to create user", err.json);
-    }
-  };
   
   const submit = async (e) => {
     e.preventDefault();
     setError("");
 
     try {
-      await api.post("/api/accounts", { email, name, password, address, phoneNumber, monitorType, subscriptionType});
+      const currentUser = JSON.parse(localStorage.getItem("user"));
+      await api.post("/api/accounts", { email, name, password, phoneNumber, monitorType, subscriptionType}, {headers : { 'x-user-email': currentUser.email }});
+
 
       setError("success");
       setStatusMsg("User created successfully");

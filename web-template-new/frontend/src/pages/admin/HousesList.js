@@ -39,25 +39,22 @@ export default function HousesList() {
   }, []);
 
   const monitorOptions = useMemo(() => monitors.map((m) => getOwner(m)).filter(Boolean), [monitors]);
-  const locationOptions = useMemo(() => ["Abu Dhabi", "Ajman", "Al Ain", "Dubai", "Fujairah", "Ras Al Khaima", "Sharjah"], []);
+  const locationOptions = useMemo(() => ["Abu Dhabi", "Ajman", "Al Ain", "Dubai", "Fujairah", "Ras Al Khaimah", "Sharjah"], []);
   const statusOptions = useMemo(() => ["Online", "Offline", "Maintenance"], []);
 
   const filtered = useMemo(() => {
     const contains = (cell, typed) => normalize(cell).includes(normalize(typed).trim());
     const getEmirateFromLocation = (loc) => {
       const s = (loc ?? "").toString();
-      // split on -, – , — (hyphen/en-dash/em-dash)
-      return normalize(s.split(/[-–—]/)[0]).trim();
+      return normalize(s.split(/[-]/)[0]).trim();
     };
-
-
 
     return monitors.filter((m) => {
       if (fOwnerEmail && !contains(getOwner(m), fOwnerEmail)) return false;
       if (fLocation) {
         const emirate = getEmirateFromLocation(getLocation(m));
         const q = normalize(fLocation).trim();     // what user typed or selected
-        if (q && !emirate.startsWith(q)) return false;
+        if (q && !(emirate.startsWith(q) || contains(getLocation(m), fLocation))) return false;
       }
       if (fStatus && !contains(getStatus(m), fStatus)) return false;
       return true;

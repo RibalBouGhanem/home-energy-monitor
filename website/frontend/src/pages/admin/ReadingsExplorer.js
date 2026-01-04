@@ -49,6 +49,9 @@ export default function ReadingsExplorer() {
   const [hoverEnvironmentalX, setHoverEnvironmentalX] = useState(null);
   const [hoverSolarX, setHoverSolarX] = useState(null);
 
+  const showDaily = interval === "daily";
+  const showMonthly = interval === "monthly";
+  const showYearly = interval === "yearly";
 
   const getMonitorId = (m) => (m.Monitor_ID ?? "").toString();
   const monitorOptions = useMemo(() => monitors.map((m) => getMonitorId(m)).filter(Boolean), [monitors]);
@@ -63,7 +66,6 @@ export default function ReadingsExplorer() {
   const resolveTableByInterval = (table, interval) => {
   return `${table}_${interval}`;
 };
-
 
 
 const consumptionIndexByTs = useMemo(() => {
@@ -128,198 +130,6 @@ const consumptionIndexByTs = useMemo(() => {
     Total_Energy_Generated: "Total Energy Generated",
   }),[]);
   
-  const TABLES = useMemo(() => ({
-    _computed_energy_consumption_daily: {
-      title: "Energy Consumption",
-      chartTitle: "Consumption",
-      xKey: "Timestamp",
-      yKeys: consumptionYKeys,
-      labels: consumptionLabels,
-      chartRef: consumptionChartRef,
-      getHoverX: () => hoverConsumptionX,
-      setHoverX: setHoverConsumptionX,
-      indexByX: consumptionIndexByTs, // Map(xString -> index)
-      xToComparable: (v) => new Date(v).getTime(),
-    },
-    _computed_energy_consumption_monthly: {
-      title: "Energy Consumption",
-      chartTitle: "Consumption",
-      xKey: "Timestamp",
-      yKeys: consumptionYKeys,
-      labels: consumptionLabels,
-      chartRef: consumptionChartRef,
-      getHoverX: () => hoverConsumptionX,
-      setHoverX: setHoverConsumptionX,
-      indexByX: consumptionIndexByTs, // Map(xString -> index)
-      xToComparable: (v) => new Date(v).getTime(),
-    },
-    _computed_energy_consumption_yearly: {
-      title: "Energy Consumption",
-      chartTitle: "Consumption",
-      xKey: "Timestamp",
-      yKeys: consumptionYKeys,
-      labels: consumptionLabels,
-      chartRef: consumptionChartRef,
-      getHoverX: () => hoverConsumptionX,
-      setHoverX: setHoverConsumptionX,
-      indexByX: consumptionIndexByTs, // Map(xString -> index)
-      xToComparable: (v) => new Date(v).getTime(),
-    },
-  
-    _computed_energy_production_daily: {
-      title: "Energy Production",
-      chartTitle: "Production",
-      xKey: "Timestamp",
-      yKeys: productionYKeys,
-      labels: productionLabels,
-      chartRef: productionChartRef,
-      getHoverX: () => hoverProductionX,
-      setHoverX: setHoverProductionX,
-      indexByX: productionIndexByTs,
-      xToComparable: (v) => new Date(v).getTime(),
-    },
-    _computed_energy_production_monthly: {
-      title: "Energy Production",
-      chartTitle: "Production",
-      xKey: "Timestamp",
-      yKeys: productionYKeys,
-      labels: productionLabels,
-      chartRef: productionChartRef,
-      getHoverX: () => hoverProductionX,
-      setHoverX: setHoverProductionX,
-      indexByX: productionIndexByTs,
-      xToComparable: (v) => new Date(v).getTime(),
-    },
-    _computed_energy_production_yearly: {
-      title: "Energy Production",
-      chartTitle: "Production",
-      xKey: "Timestamp",
-      yKeys: productionYKeys,
-      labels: productionLabels,
-      chartRef: productionChartRef,
-      getHoverX: () => hoverProductionX,
-      setHoverX: setHoverProductionX,
-      indexByX: productionIndexByTs,
-      xToComparable: (v) => new Date(v).getTime(),
-    },
-  
-    _computed_energy_reserves_daily: {
-      title: "Energy Reserves",
-      chartTitle: "Reserves",
-      xKey: "Timestamp",
-      yKeys: reservesYKeys,
-      labels: reservesLabels,
-      chartRef: reservesChartRef,
-      getHoverX: () => hoverReservesX,
-      setHoverX: setHoverReservesX,
-      indexByX: reservesIndexByTs,
-      xToComparable: (v) => new Date(v).getTime(),
-    },
-    _computed_energy_reserves_monthly: {
-      title: "Energy Reserves",
-      chartTitle: "Reserves",
-      xKey: "Timestamp",
-      yKeys: avgReservesYKeys,
-      labels: reservesLabels,
-      chartRef: reservesChartRef,
-      getHoverX: () => hoverReservesX,
-      setHoverX: setHoverReservesX,
-      indexByX: reservesIndexByTs,
-      xToComparable: (v) => new Date(v).getTime(),
-    },
-    _computed_energy_reserves_yearly: {
-      title: "Energy Reserves",
-      chartTitle: "Reserves",
-      xKey: "Timestamp",
-      yKeys: avgReservesYKeys,
-      labels: reservesLabels,
-      chartRef: reservesChartRef,
-      getHoverX: () => hoverReservesX,
-      setHoverX: setHoverReservesX,
-      indexByX: reservesIndexByTs,
-      xToComparable: (v) => new Date(v).getTime(),
-    },
-    
-    _computed_environmental_data_daily: {
-      title: "Environmental Data",
-      chartTitle: "Environmental Data",
-      xKey: "Timestamp",
-      yKeys: envYKeys,
-      labels: envLabels,
-      chartRef: environmentalChartRef,
-      getHoverX: () => hoverEnvironmentalX,
-      setHoverX: setHoverEnvironmentalX,
-      indexByX: environmentalIndexByTs,
-      xToComparable: (v) => new Date(v).getTime(),
-    },
-    _computed_environmental_data_monthly: {
-      title: "Environmental Data",
-      chartTitle: "Environmental Data",
-      xKey: "Timestamp",
-      yKeys: envYKeys,
-      labels: envLabels,
-      chartRef: environmentalChartRef,
-      getHoverX: () => hoverEnvironmentalX,
-      setHoverX: setHoverEnvironmentalX,
-      indexByX: environmentalIndexByTs,
-      xToComparable: (v) => new Date(v).getTime(),
-    },
-    _computed_environmental_data_yearly: {
-      title: "Environmental Data",
-      chartTitle: "Environmental Data",
-      xKey: "Timestamp",
-      yKeys: envYKeys,
-      labels: envLabels,
-      chartRef: environmentalChartRef,
-      getHoverX: () => hoverEnvironmentalX,
-      setHoverX: setHoverEnvironmentalX,
-      indexByX: environmentalIndexByTs,
-      xToComparable: (v) => new Date(v).getTime(),
-    },
-    
-    _computed_solar_panel_data_daily: {
-      title: "Solar Panels Data",
-      chartTitle: "Solar Panels Data",
-      xKey: "Timestamp",
-      yKeys: solarYKeys,
-      labels: solarLabels,
-      chartRef: solarChartRef,
-      getHoverX: () => hoverSolarX,
-      setHoverX: setHoverSolarX,
-      indexByX: solarIndexByTs, // your solarIndexByTs uses Date_Calculated
-      xToComparable: (v) => new Date(v).getTime(), // safer than getDate()
-    },
-    _computed_solar_panel_data_monthly: {
-      title: "Solar Panels Data",
-      chartTitle: "Solar Panels Data",
-      xKey: "Timestamp",
-      yKeys: solarYKeys,
-      labels: solarLabels,
-      chartRef: solarChartRef,
-      getHoverX: () => hoverSolarX,
-      setHoverX: setHoverSolarX,
-      indexByX: solarIndexByTs, // your solarIndexByTs uses Date_Calculated
-      xToComparable: (v) => new Date(v).getTime(), // safer than getDate()
-    },
-    _computed_solar_panel_data_yearly: {
-      title: "Solar Panels Data",
-      chartTitle: "Solar Panels Data",
-      xKey: "Timestamp",
-      yKeys: solarYKeys,
-      labels: solarLabels,
-      chartRef: solarChartRef,
-      getHoverX: () => hoverSolarX,
-      setHoverX: setHoverSolarX,
-      indexByX: solarIndexByTs, // your solarIndexByTs uses Date_Calculated
-      xToComparable: (v) => new Date(v).getTime(), // safer than getDate()
-    },
-  }), [
-    consumptionYKeys, consumptionLabels, consumptionIndexByTs, hoverConsumptionX,
-    productionYKeys, productionLabels, productionIndexByTs, hoverProductionX,
-    envYKeys, envLabels, environmentalIndexByTs, hoverEnvironmentalX,
-    solarYKeys, solarLabels, solarIndexByTs, hoverSolarX,
-  ]);
-
   const lastLoaded = useMemo(() => {
     const loadTime = new Date().getTime();
     console.log("Readings data changed at", new Date(loadTime).toLocaleString());
@@ -472,51 +282,521 @@ const consumptionIndexByTs = useMemo(() => {
       {err && <div className="admin-error">{err}</div>}
       
       <div className="readings-rows">
-        {Object.entries(readingsData || {}).map(([key, rows]) => {
-          const cfg = TABLES[key];
-          if (!cfg) return null;                 // unknown table key
-          if (!Array.isArray(rows) || !rows.length) return null;
-          const indexByX = new Map();
-          rows.forEach((r, i) => indexByX.set(String(r?.[cfg.xKey]), i));
-          
-          return (
-            <div className="readings-row" key={key}>
-              <div className="readings-table">
-                <DataTable
-                  title={cfg.title}
-                  rows={rows}
-                  onRowHover={(row) => {
-                    const xVal = row?.[cfg.xKey];
-                    const idx = indexByX.get(String(xVal));
-                    highlightPoint(cfg.chartRef.current, idx);
-                  }}
-                  onRowLeave={() => clearHighlight(cfg.chartRef.current)}
-                  highlightRow={(row) => {
-                    const a = cfg.xToComparable(row?.[cfg.xKey]);
-                    const b = Number(cfg.getHoverX());
-                    return a != null && b != null && a === b;
-                  }}
-                  pageSize={8}
-                />
-              </div>
-
-              <div className="readings-chart">
-                <ChartCard title={cfg.chartTitle}>
-                  <LineTimeChart
-                    id={`${key}-chart`}
-                    rows={rows}
-                    xKey={cfg.xKey}
-                    yKeys={cfg.yKeys}
-                    labels={cfg.labels}
-                    chartRef={cfg.chartRef}
-                    onHoverX={(x) => cfg.setHoverX(x)}
-                  />
-                </ChartCard>
-              </div>
-            </div>
-          );
-        })}
+  {showDaily && readingsData?._computed_energy_consumption_daily && (
+    <div className="readings-row">
+      <div className="readings-table">
+        <DataTable
+          title="Energy Consumption"
+          rows={readingsData._computed_energy_consumption_daily}
+          onRowHover={(row) => {
+            const idx = consumptionIndexByTs.get(String(row.Timestamp));
+            highlightPoint(consumptionChartRef.current, idx);
+          }}
+          onRowLeave={() => clearHighlight(consumptionChartRef.current)}
+          highlightRow={(row) => {
+            const a = toMs(row.Timestamp);
+            const b = Number(hoverConsumptionX);
+            return a != null && b != null && a === b;
+          }}
+        />
       </div>
+      <div className="readings-chart">
+        <ChartCard title="Consumption">
+          <LineTimeChart
+            id="consumptionChart"
+            rows={readingsData._computed_energy_consumption_daily}
+            xKey="Timestamp"
+            yKeys={consumptionYKeys}
+            labels={consumptionLabels}
+            chartRef={consumptionChartRef}
+            onHoverX={(x) => setHoverConsumptionX(x)}
+          />
+        </ChartCard>
+      </div>
+    </div>
+  )}
+
+  {showMonthly && readingsData?._computed_energy_consumption_monthly && (
+    <div className="readings-row">
+      <div className="readings-table">
+        <DataTable
+          title="Energy Consumption"
+          rows={readingsData._computed_energy_consumption_monthly}
+          onRowHover={(row) => {
+            const idx = consumptionIndexByTs.get(String(row.Timestamp));
+            highlightPoint(consumptionChartRef.current, idx);
+          }}
+          onRowLeave={() => clearHighlight(consumptionChartRef.current)}
+          highlightRow={(row) => {
+            const a = toMs(row.Timestamp);
+            const b = Number(hoverConsumptionX);
+            return a != null && b != null && a === b;
+          }}
+        />
+      </div>
+      <div className="readings-chart">
+        <ChartCard title="Consumption">
+          <LineTimeChart
+            id="consumptionChart"
+            rows={readingsData._computed_energy_consumption_monthly}
+            xKey="Timestamp"
+            yKeys={consumptionYKeys}
+            labels={consumptionLabels}
+            chartRef={consumptionChartRef}
+            onHoverX={(x) => setHoverConsumptionX(x)}
+          />
+        </ChartCard>
+      </div>
+    </div>
+  )}
+
+  {showYearly && readingsData?._computed_energy_consumption_yearly && (
+    <div className="readings-row">
+      <div className="readings-table">
+        <DataTable
+          title="Energy Consumption"
+          rows={readingsData._computed_energy_consumption_yearly}
+          onRowHover={(row) => {
+            const idx = consumptionIndexByTs.get(String(row.Timestamp));
+            highlightPoint(consumptionChartRef.current, idx);
+          }}
+          onRowLeave={() => clearHighlight(consumptionChartRef.current)}
+          highlightRow={(row) => {
+            const a = toMs(row.Timestamp);
+            const b = Number(hoverConsumptionX);
+            return a != null && b != null && a === b;
+          }}
+        />
+      </div>
+      <div className="readings-chart">
+        <ChartCard title="Consumption">
+          <LineTimeChart
+            id="consumptionChart"
+            rows={readingsData._computed_energy_consumption_yearly}
+            xKey="Timestamp"
+            yKeys={consumptionYKeys}
+            labels={consumptionLabels}
+            chartRef={consumptionChartRef}
+            onHoverX={(x) => setHoverConsumptionX(x)}
+          />
+        </ChartCard>
+      </div>
+    </div>
+  )}
+
+  {showDaily && readingsData?._computed_energy_production_daily && (
+    <div className="readings-row">
+      <div className="readings-table">
+        <DataTable
+          title="Energy Production"
+          rows={readingsData._computed_energy_production_daily}
+          onRowHover={(row) => {
+            const idx = productionIndexByTs.get(String(row.Timestamp));
+            highlightPoint(productionChartRef.current, idx);
+          }}
+          onRowLeave={() => clearHighlight(productionChartRef.current)}
+          highlightRow={(row) => {
+            const a = toMs(row.Timestamp);
+            const b = Number(hoverProductionX);
+            return a != null && b != null && a === b;
+          }}
+          pageSize={8}
+        />
+      </div>
+      <div className="readings-chart">
+        <ChartCard title="Production">
+          <LineTimeChart
+            id="productionChart"
+            rows={readingsData._computed_energy_production_daily}
+            xKey="Timestamp"
+            yKeys={productionYKeys}
+            labels={productionLabels}
+            chartRef={productionChartRef}
+            onHoverX={(x) => setHoverProductionX(x)}
+          />
+        </ChartCard>
+      </div>
+    </div>
+  )}
+
+  {showMonthly && readingsData?._computed_energy_production_monthly && (
+    <div className="readings-row">
+      <div className="readings-table">
+        <DataTable
+          title="Energy Production"
+          rows={readingsData._computed_energy_production_monthly}
+          onRowHover={(row) => {
+            const idx = productionIndexByTs.get(String(row.Timestamp));
+            highlightPoint(productionChartRef.current, idx);
+          }}
+          onRowLeave={() => clearHighlight(productionChartRef.current)}
+          highlightRow={(row) => {
+            const a = toMs(row.Timestamp);
+            const b = Number(hoverProductionX);
+            return a != null && b != null && a === b;
+          }}
+          pageSize={8}
+        />
+      </div>
+      <div className="readings-chart">
+        <ChartCard title="Production">
+          <LineTimeChart
+            id="productionChart"
+            rows={readingsData._computed_energy_production_monthly}
+            xKey="Timestamp"
+            yKeys={productionYKeys}
+            labels={productionLabels}
+            chartRef={productionChartRef}
+            onHoverX={(x) => setHoverProductionX(x)}
+          />
+        </ChartCard>
+      </div>
+    </div>
+  )}
+
+  {showYearly && readingsData?._computed_energy_production_yearly && (
+    <div className="readings-row">
+      <div className="readings-table">
+        <DataTable
+          title="Energy Production"
+          rows={readingsData._computed_energy_production_yearly}
+          onRowHover={(row) => {
+            const idx = productionIndexByTs.get(String(row.Timestamp));
+            highlightPoint(productionChartRef.current, idx);
+          }}
+          onRowLeave={() => clearHighlight(productionChartRef.current)}
+          highlightRow={(row) => {
+            const a = toMs(row.Timestamp);
+            const b = Number(hoverProductionX);
+            return a != null && b != null && a === b;
+          }}
+          pageSize={8}
+        />
+      </div>
+      <div className="readings-chart">
+        <ChartCard title="Production">
+          <LineTimeChart
+            id="productionChart"
+            rows={readingsData._computed_energy_production_yearly}
+            xKey="Timestamp"
+            yKeys={productionYKeys}
+            labels={productionLabels}
+            chartRef={productionChartRef}
+            onHoverX={(x) => setHoverProductionX(x)}
+          />
+        </ChartCard>
+      </div>
+    </div>
+  )}
+
+  {showDaily && readingsData?._computed_energy_reserves_daily && (
+    <div className="readings-row">
+      <div className="readings-table">
+        <DataTable
+          title="Energy Reserves"
+          rows={readingsData._computed_energy_reserves_daily}
+          onRowHover={(row) => {
+            const idx = reservesIndexByTs.get(String(row.Timestamp));
+            highlightPoint(reservesChartRef.current, idx);
+          }}
+          onRowLeave={() => clearHighlight(reservesChartRef.current)}
+          highlightRow={(row) => {
+            const a = toMs(row.Timestamp);
+            const b = Number(hoverReservesX);
+            return a != null && b != null && a === b;
+          }}
+        />
+      </div>
+      <div className="readings-chart">
+        <ChartCard title="Reserves">
+          <LineTimeChart
+            id="reservesChart"
+            rows={readingsData._computed_energy_reserves_daily}
+            xKey="Timestamp"
+            yKeys={reservesYKeys}
+            labels={reservesLabels}
+            chartRef={reservesChartRef}
+            onHoverX={(x) => setHoverReservesX(x)}
+          />
+        </ChartCard>
+      </div>
+    </div>
+  )}
+
+  {showMonthly && readingsData?._computed_energy_reserves_monthly && (
+    <div className="readings-row">
+      <div className="readings-table">
+        <DataTable
+          title="Energy Reserves"
+          rows={readingsData._computed_energy_reserves_monthly}
+          onRowHover={(row) => {
+            const idx = reservesIndexByTs.get(String(row.Timestamp));
+            highlightPoint(reservesChartRef.current, idx);
+          }}
+          onRowLeave={() => clearHighlight(reservesChartRef.current)}
+          highlightRow={(row) => {
+            const a = toMs(row.Timestamp);
+            const b = Number(hoverReservesX);
+            return a != null && b != null && a === b;
+          }}
+        />
+      </div>
+      <div className="readings-chart">
+        <ChartCard title="Reserves">
+          <LineTimeChart
+            id="reservesChart"
+            rows={readingsData._computed_energy_reserves_monthly}
+            xKey="Timestamp"
+            yKeys={reservesYKeys}
+            labels={reservesLabels}
+            chartRef={reservesChartRef}
+            onHoverX={(x) => setHoverReservesX(x)}
+          />
+        </ChartCard>
+      </div>
+    </div>
+  )}
+
+  {showYearly && readingsData?._computed_energy_reserves_yearly && (
+    <div className="readings-row">
+      <div className="readings-table">
+        <DataTable
+          title="Energy Reserves"
+          rows={readingsData._computed_energy_reserves_yearly}
+          onRowHover={(row) => {
+            const idx = reservesIndexByTs.get(String(row.Timestamp));
+            highlightPoint(reservesChartRef.current, idx);
+          }}
+          onRowLeave={() => clearHighlight(reservesChartRef.current)}
+          highlightRow={(row) => {
+            const a = toMs(row.Timestamp);
+            const b = Number(hoverReservesX);
+            return a != null && b != null && a === b;
+          }}
+        />
+      </div>
+      <div className="readings-chart">
+        <ChartCard title="Reserves">
+          <LineTimeChart
+            id="reservesChart"
+            rows={readingsData._computed_energy_reserves_yearly}
+            xKey="Timestamp"
+            yKeys={reservesYKeys}
+            labels={reservesLabels}
+            chartRef={reservesChartRef}
+            onHoverX={(x) => setHoverReservesX(x)}
+          />
+        </ChartCard>
+      </div>
+    </div>
+  )}
+
+  {showDaily && readingsData?._computed_environmental_data_daily && (
+    <div className="readings-row">
+      <div className="readings-table">
+        <DataTable
+          title="Environmental Data"
+          rows={readingsData._computed_environmental_data_daily}
+          onRowHover={(row) => {
+            const idx = environmentalIndexByTs.get(String(row.Timestamp));
+            highlightPoint(environmentalChartRef.current, idx);
+          }}
+          onRowLeave={() => clearHighlight(environmentalChartRef.current)}
+          highlightRow={(row) => {
+            const a = toMs(row.Timestamp);
+            const b = Number(hoverEnvironmentalX);
+            return a != null && b != null && a === b;
+          }}
+        />
+      </div>
+      <div className="readings-chart">
+        <ChartCard title="Environmental Data">
+          <LineTimeChart
+            id="environmentalChart"
+            rows={readingsData._computed_environmental_data_daily}
+            xKey="Timestamp"
+            yKeys={envYKeys}
+            labels={envLabels}
+            chartRef={environmentalChartRef}
+            onHoverX={(x) => setHoverEnvironmentalX(x)}
+          />
+        </ChartCard>
+      </div>
+    </div>
+  )}
+
+  {showMonthly && readingsData?._computed_environmental_data_monthly && (
+    <div className="readings-row">
+      <div className="readings-table">
+        <DataTable
+          title="Environmental Data"
+          rows={readingsData._computed_environmental_data_monthly}
+          onRowHover={(row) => {
+            const idx = environmentalIndexByTs.get(String(row.Timestamp));
+            highlightPoint(environmentalChartRef.current, idx);
+          }}
+          onRowLeave={() => clearHighlight(environmentalChartRef.current)}
+          highlightRow={(row) => {
+            const a = toMs(row.Timestamp);
+            const b = Number(hoverEnvironmentalX);
+            return a != null && b != null && a === b;
+          }}
+        />
+      </div>
+      <div className="readings-chart">
+        <ChartCard title="Environmental Data">
+          <LineTimeChart
+            id="environmentalChart"
+            rows={readingsData._computed_environmental_data_monthly}
+            xKey="Timestamp"
+            yKeys={envYKeys}
+            labels={envLabels}
+            chartRef={environmentalChartRef}
+            onHoverX={(x) => setHoverEnvironmentalX(x)}
+          />
+        </ChartCard>
+      </div>
+    </div>
+  )}
+
+  {showYearly && readingsData?._computed_environmental_data_yearly && (
+    <div className="readings-row">
+      <div className="readings-table">
+        <DataTable
+          title="Environmental Data"
+          rows={readingsData._computed_environmental_data_yearly}
+          onRowHover={(row) => {
+            const idx = environmentalIndexByTs.get(String(row.Timestamp));
+            highlightPoint(environmentalChartRef.current, idx);
+          }}
+          onRowLeave={() => clearHighlight(environmentalChartRef.current)}
+          highlightRow={(row) => {
+            const a = toMs(row.Timestamp);
+            const b = Number(hoverEnvironmentalX);
+            return a != null && b != null && a === b;
+          }}
+        />
+      </div>
+      <div className="readings-chart">
+        <ChartCard title="Environmental Data">
+          <LineTimeChart
+            id="environmentalChart"
+            rows={readingsData._computed_environmental_data_yearly}
+            xKey="Timestamp"
+            yKeys={envYKeys}
+            labels={envLabels}
+            chartRef={environmentalChartRef}
+            onHoverX={(x) => setHoverEnvironmentalX(x)}
+          />
+        </ChartCard>
+      </div>
+    </div>
+  )}
+
+  {showDaily && readingsData?._computed_solar_panel_data_daily && (
+    <div className="readings-row">
+      <div className="readings-table">
+        <DataTable
+          title="Solar Panels Data"
+          rows={readingsData._computed_solar_panel_data_daily}
+          onRowHover={(row) => {
+            const idx = solarIndexByTs.get(String(row.Date_Calculated));
+            highlightPoint(solarChartRef.current, idx);
+          }}
+          onRowLeave={() => clearHighlight(solarChartRef.current)}
+          highlightRow={(row) => {
+            const a = toDate(row.Date_Calculated);
+            const b = Number(hoverSolarX);
+            return a != null && b != null && a === b;
+          }}
+        />
+      </div>
+      <div className="readings-chart">
+        <ChartCard title="Solar Panels Data">
+          <LineTimeChart
+            id="solarPanelsChart"
+            rows={readingsData._computed_solar_panel_data_daily}
+            xKey="Timestamp"
+            yKeys={solarYKeys}
+            labels={solarLabels}
+            chartRef={solarChartRef}
+            onHoverX={(x) => setHoverSolarX(x)}
+          />
+        </ChartCard>
+      </div>
+    </div>
+  )}
+
+  {showMonthly && readingsData?._computed_solar_panel_data_monthly && (
+    <div className="readings-row">
+      <div className="readings-table">
+        <DataTable
+          title="Solar Panels Data"
+          rows={readingsData._computed_solar_panel_data_monthly}
+          onRowHover={(row) => {
+            const idx = solarIndexByTs.get(String(row.Date_Calculated));
+            highlightPoint(solarChartRef.current, idx);
+          }}
+          onRowLeave={() => clearHighlight(solarChartRef.current)}
+          highlightRow={(row) => {
+            const a = toDate(row.Date_Calculated);
+            const b = Number(hoverSolarX);
+            return a != null && b != null && a === b;
+          }}
+        />
+      </div>
+      <div className="readings-chart">
+        <ChartCard title="Solar Panels Data">
+          <LineTimeChart
+            id="solarPanelsChart"
+            rows={readingsData._computed_solar_panel_data_monthly}
+            xKey="Timestamp"
+            yKeys={solarYKeys}
+            labels={solarLabels}
+            chartRef={solarChartRef}
+            onHoverX={(x) => setHoverSolarX(x)}
+          />
+        </ChartCard>
+      </div>
+    </div>
+  )}
+
+  {showYearly && readingsData?._computed_solar_panel_data_yearly && (
+    <div className="readings-row">
+      <div className="readings-table">
+        <DataTable
+          title="Solar Panels Data"
+          rows={readingsData._computed_solar_panel_data_yearly}
+          onRowHover={(row) => {
+            const idx = solarIndexByTs.get(String(row.Date_Calculated));
+            highlightPoint(solarChartRef.current, idx);
+          }}
+          onRowLeave={() => clearHighlight(solarChartRef.current)}
+          highlightRow={(row) => {
+            const a = toDate(row.Date_Calculated);
+            const b = Number(hoverSolarX);
+            return a != null && b != null && a === b;
+          }}
+        />
+      </div>
+      <div className="readings-chart">
+        <ChartCard title="Solar Panels Data">
+          <LineTimeChart
+            id="solarPanelsChart"
+            rows={readingsData._computed_solar_panel_data_yearly}
+            xKey="Timestamp"
+            yKeys={solarYKeys}
+            labels={solarLabels}
+            chartRef={solarChartRef}
+            onHoverX={(x) => setHoverSolarX(x)}
+          />
+        </ChartCard>
+      </div>
+    </div>
+  )}
+</div>
+
+
 
       <div className="readings-note">
         If your backend returns different column names, map them in the table body.

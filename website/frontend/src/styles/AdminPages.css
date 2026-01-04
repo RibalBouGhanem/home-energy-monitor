@@ -35,7 +35,7 @@
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.03);
-  width: 862px;
+  /* width: 862px; */
 }
 
 .admin-table-scroll {
@@ -46,7 +46,6 @@
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  width: 860px; /* helps layout stay clean, scroll on small screens */
 }
 
 
@@ -56,7 +55,7 @@
   z-index: 1;
   text-align: left;
   font-weight: 700;
-  font-size:0.74rem;
+  /* font-size:0.74rem; */
   letter-spacing: 0.2px;
   padding: 12px 14px;
   background: rgba(15, 15, 18, 0.9);

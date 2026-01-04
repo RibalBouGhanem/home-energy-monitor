@@ -27,7 +27,14 @@ export default function ReadingsExplorer() {
   const [loadingMonitors, setLoadingMonitors] = useState(true);
   const [loadingRows, setLoadingRows] = useState(false);
   const [readingsData, setReadingsData] = useState(null);
-  const [tablesChosen, setTablesChosen] = useState("All");
+  const [tablesChosen, setTablesChosen] = useState([]);
+  const [interval, setInterval] = useState("");
+
+  const intervalOptions = [
+    { value: "daily", label: "Daily (aggregated)" },
+    { value: "monthly", label: "Monthly (aggregated)" },
+    { value: "yearly", label: "Yearly (aggregated)" },
+  ];
 
   const [monitorId, setMonitorId] = useState(qs.get("monitorId") || "");
   const [from, setFrom] = useState("");
@@ -41,7 +48,18 @@ export default function ReadingsExplorer() {
 
   const getMonitorId = (m) => (m.Monitor_ID ?? "").toString();
   const monitorOptions = useMemo(() => monitors.map((m) => getMonitorId(m)).filter(Boolean), [monitors]);
-  const tableOptions = useMemo(() => ["energy_consumption", "energy_production", "environmental_data", "_computed_solar_panel_data_daily"], []);
+  const tableOptions = [
+    { value: "_computed_energy_consumption", label: "Energy Consumption" },
+    { value: "_computed_energy_production", label: "Energy Production" },
+    { value: "_computed_energy_reserves", label: "Energy Reserves" },
+    { value: "_computed_environmental_data", label: "Environmental Data" },
+    { value: "_computed_solar_panel_data", label: "Solar Panel Data" },
+  ];
+
+  const resolveTableByInterval = (table, interval) => {
+  return `${table}_${interval}`;
+};
+
 
   const consumptionIndexByTs = useMemo(() => {
     const map = new Map();
@@ -127,21 +145,21 @@ export default function ReadingsExplorer() {
       const params = new URLSearchParams();
       if (from) params.set("from", from);
       if (to) params.set("to", to);
-      if (Array.isArray(tablesChosen) && tablesChosen.length) params.set("tables", tablesChosen.join(","));
 
+      const resolvedTables = (tablesChosen || []).map((t) => resolveTableByInterval(t, interval));
+      if (resolvedTables.length) params.set("tables", [...new Set(resolvedTables)].join(","));
+      
       const res = await api.get(`/api/monitor/${monitorId}/data?${params.toString()}`);
       
       // FRONTEND prune: keep only selected tables
-      const selected = new Set(tablesChosen);
+      const selected = new Set(resolvedTables);
       const pruned = {};
+
       selected.forEach((k) => {
         pruned[k] = res.data?.[k] ?? [];
       });
 
       setReadingsData(pruned);
-      console.log("SOLAR KEYS:", res.data);
-      // console.log("SOLAR yKeys:", solarYKeys);
-
     } catch (e) {
       console.log("FETCH MONITOR DATA ERROR:", e);
       setErr(e?.response?.data?.message || "Failed to load monitor data.");
@@ -180,12 +198,13 @@ export default function ReadingsExplorer() {
         <h2 className="section-title">Readings Explorer</h2>
 
         {readingsData && <div className="last-loaded">Readings data last loaded on: {new Date(lastLoaded).toLocaleString()}</div>}
+
         <div className="readings-actions">
           <button
             type="button"
             className="cta-button"
             onClick={fetchMonitorReadings}
-            disabled={loadingRows || loadingMonitors}
+            disabled={(loadingRows || loadingMonitors) && interval && tablesChosen}
           >
             Load
           </button>
@@ -235,6 +254,15 @@ export default function ReadingsExplorer() {
             searchable={false}
             multiple
           />
+          <SearchableSelect
+            label="Interval"
+            value={interval}
+            onChange={setInterval}
+            options={intervalOptions}
+            placeholder="Select interval..."
+            allowAll={false}
+            searchable={false}
+          />
         </div>
 
         <div className="form-group readings-date">
@@ -249,7 +277,7 @@ export default function ReadingsExplorer() {
       {err && <div className="admin-error">{err}</div>}
       
         <div className="readings-rows">
-          {readingsData?.energy_consumption && (
+          {readingsData?._computed_energy_consumption_daily && (
             <div className="readings-row">
               <div className="readings-table">
                 <DataTable

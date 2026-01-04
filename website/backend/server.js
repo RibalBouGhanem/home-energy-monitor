@@ -8,25 +8,17 @@ const app = express();
 app.use(cors({ origin: "http://localhost:3000" }));
 app.use(express.json());
 
-const dbConfigs = { // tried to do something where different databases could be used depending on which website was opened but never finished it
-    companyDB: {
-        host: "localhost",
-        user: "root",
-        password: "",
-        database: "company_energy_monitor",
-    },
-    homeDB: {
-        host: "localhost",
-        user: "root",
-        password: "",
-        database: "home_energy_monitor",
-    },
+const companyDB = {
+  host: "localhost",
+  user: "root",
+  password: "",
+  database: "company_energy_monitor",
 }
 
 // TO-DO: if implementing multiple databases for the corresponding websites fails, remove the following line and always use companyDB, 
 // and create a new react project for home_energy_monitor by copying this project and excluding certain pages and components such as login, admin, and others
 
-const db = mysql.createConnection(dbConfigs.companyDB); // default to use companyDB
+const db = mysql.createConnection(companyDB); // default to use companyDB
 
 db.connect((err) => {
   if (err) console.log("DB CONNECT ERROR:", err);
@@ -232,101 +224,185 @@ app.get("/api/monitor/:monitorId/data", (req, res) => {
     try {
       // monitors (single row usually)
       const monitorsSql = `
-        SELECT Monitor_ID, User_Email, Location, Status, Microprocessor_Type, Installation_Date
+        SELECT Monitor_ID
         FROM monitors
         WHERE Monitor_ID = ?
       `;
       const monitorsRows = await run(monitorsSql, [monitorId]);
 
       // energy_consumption
-      const consumptionSql = `
-        SELECT Consumption_ID, Monitor_ID, Timestamp, Consumption_Value
-        FROM energy_consumption
+      const consumptionParams = hasRange ? [monitorId, from, to] : [monitorId];
+      const consumptionDSql = `
+        SELECT Date, Total_Consumption
+        FROM _computed_energy_consumption_daily
         WHERE Monitor_ID = ?
-        ${hasRange ? "AND Timestamp >= ? AND Timestamp <= ?" : ""}
-        ORDER BY Timestamp DESC
-        LIMIT ?
+        ${hasRange ? "AND Date >= ? AND Date <= ?" : ""}
+        ORDER BY Date DESC
       `;
-      const consumptionParams = hasRange ? [monitorId, from, to, rowLimit] : [monitorId, rowLimit];
-      const consumptionRows = await run(consumptionSql, consumptionParams);
+      const consumptionMSql = `
+        SELECT STR_TO_DATE(CONCAT(Year,'-',LPAD(Month,2,'0'),'-01'), '%Y-%m-%d') AS Date, Total_Consumption
+        FROM _computed_energy_consumption_monthly
+        WHERE Monitor_ID = ?
+        ${hasRange ? "AND MONTH(Date) >= MONTH(?) AND MONTH(Date) <= MONTH(?) AND YEAR(Date) >= YEAR(?) AND YEAR(Date) <= YEAR(?)" : ""}
+        ORDER BY Year DESC, Month DESC
+      `;
+      const consumptionYSql = `
+        SELECT Year, Total_Consumption
+        FROM _computed_energy_consumption_yearly
+        WHERE Monitor_ID = ?
+        ${hasRange ? "AND Year >= YEAR(?) AND Year <= YEAR(?)" : ""}
+        ORDER BY Year DESC
+      `;
+      const consumptionDRows = await run(consumptionDSql, consumptionParams);
+      const consumptionMRows = await run(consumptionMSql, consumptionParams);
+      const consumptionYRows = await run(consumptionYSql, consumptionParams);
 
       // energy_production
-      const productionSql = `
-        SELECT Production_ID, Monitor_ID, Timestamp, Production_Value
-        FROM energy_production
+      const productionParams = hasRange ? [monitorId, from, to] : [monitorId];
+      const productionDSql = `
+        SELECT Date, Total_Production
+        FROM _computed_energy_production_daily
         WHERE Monitor_ID = ?
-        ${hasRange ? "AND Timestamp >= ? AND Timestamp <= ?" : ""}
-        ORDER BY Timestamp DESC
-        LIMIT ?
+        ${hasRange ? "AND Date >= ? AND Date <= ?" : ""}
+        ORDER BY Date DESC
       `;
-      const productionParams = hasRange ? [monitorId, from, to, rowLimit] : [monitorId, rowLimit];
-      const productionRows = await run(productionSql, productionParams);
+      const productionMSql = `
+        SELECT STR_TO_DATE(CONCAT(Year,'-',LPAD(Month,2,'0'),'-01'), '%Y-%m-%d') AS Date, Total_Production
+        FROM _computed_energy_production_monthly
+        WHERE Monitor_ID = ?
+        ${hasRange ? "AND MONTH(Date) >= MONTH(?) AND MONTH(Date) <= MONTH(?) AND YEAR(Date) >= YEAR(?) AND YEAR(Date) <= YEAR(?)" : ""}
+        ORDER BY Year, Month DESC
+      `;
+      const productionYSql = `
+        SELECT Year, Total_Production
+        FROM _computed_energy_production_yearly
+        WHERE Monitor_ID = ?
+        ${hasRange ? "AND Year >= YEAR(?) AND Year <= YEAR(?)" : ""}
+        ORDER BY Year DESC
+      `;
+      const productionDRows = await run(productionDSql, productionParams);
+      const productionMRows = await run(productionMSql, productionParams);
+      const productionYRows = await run(productionYSql, productionParams);
 
       // environmental_data
-      const envSql = `
-        SELECT EnvData_ID, Monitor_ID, Timestamp, Light_Intensity, Temperature, Humidity
-        FROM environmental_data
+      const envParams = hasRange ? [monitorId, from, to] : [monitorId];
+      const envDSql = `
+        SELECT Date, Avg_Light_Intensity, Avg_Temperature, Avg_Humidity
+        FROM _computed_environmental_data_daily
         WHERE Monitor_ID = ?
-        ${hasRange ? "AND Timestamp >= ? AND Timestamp <= ?" : ""}
-        ORDER BY Timestamp DESC
-        LIMIT ?
+        ${hasRange ? "AND Date >= ? AND Date <= ?" : ""}
+        ORDER BY Date DESC
       `;
-      const envParams = hasRange ? [monitorId, from, to, rowLimit] : [monitorId, rowLimit];
-      const envRows = await run(envSql, envParams);
+      const envMSql = `
+        SELECT STR_TO_DATE(CONCAT(Year,'-',LPAD(Month,2,'0'),'-01'), '%Y-%m-%d') AS Date, Avg_Light_Intensity, Avg_Temperature, Avg_Humidity
+        FROM _computed_environmental_data_monthly
+        WHERE Monitor_ID = ?
+        ${hasRange ? "AND MONTH(Date) >= MONTH(?) AND MONTH(Date) <= MONTH(?) AND YEAR(Date) >= YEAR(?) AND YEAR(Date) <= YEAR(?)" : ""}
+        ORDER BY Date DESC
+      `;
+      const envYSql = `
+        SELECT Year, Avg_Light_Intensity, Avg_Temperature, Avg_Humidity
+        FROM _computed_environmental_data_yearly
+        WHERE Monitor_ID = ?
+        ${hasRange ? "AND Year >= YEAR(?) AND Year <= YEAR(?)" : ""}
+        ORDER BY Year DESC
+      `;
+      const envDRows = await run(envDSql, envParams);
+      const envMRows = await run(envMSql, envParams);
+      const envYRows = await run(envYSql, envParams);
 
       // energy_reserves
-      const reservesSql = `
-        SELECT EnergyReserves_ID, Monitor_ID, Date, Reserve_Amount
+      const reservesParams = hasRange ? [monitorId, from, to] : [monitorId];
+      const reservesDSql = `
+        SELECT Date, Reserve_Amount
         FROM _computed_energy_reserves_daily
         WHERE Monitor_ID = ?
         ${hasRange ? "AND Date >= ? AND Date <= ?" : ""}
         ORDER BY Date DESC
-        LIMIT ?
       `;
-      const reservesParams = hasRange ? [monitorId, from, to, rowLimit] : [monitorId, rowLimit];
-      const reservesRows = await run(reservesSql, reservesParams);
+      const reservesMSql = `
+        SELECT STR_TO_DATE(CONCAT(Year,'-',LPAD(Month,2,'0'),'-01'), '%Y-%m-%d') AS Date, Avg_Reserve_Amount
+        FROM _computed_energy_reserves_monthly
+        WHERE Monitor_ID = ?
+        ${hasRange ? "AND MONTH(Date) >= MONTH(?) AND MONTH(Date) <= MONTH(?) AND YEAR(Date) >= YEAR(?) AND YEAR(Date) <= YEAR(?)" : ""}
+        ORDER BY Date DESC
+      `;
+      const reservesYSql = `
+        SELECT Year, Avg_Reserve_Amount
+        FROM _computed_energy_reserves_yearly
+        WHERE Monitor_ID = ?
+        ${hasRange ? "AND Year >= YEAR(?) AND Year <= YEAR(?)" : ""}
+        ORDER BY Year DESC
+      `;
+      const reservesDRows = await run(reservesDSql, reservesParams);
+      const reservesMRows = await run(reservesMSql, reservesParams);
+      const reservesYRows = await run(reservesYSql, reservesParams);
 
       // notifications
       const notificationsSql = `
-        SELECT Notification_ID, Monitor_ID, EnergyConsumption_ID, EnergyProduction_ID, EnergyReserves_ID,
-               EnvData_ID, SellRequest_ID, SolarData_ID, Timestamp, Notification_Type
+        SELECT Timestamp, Notification_Type
         FROM notifications
         WHERE Monitor_ID = ?
         ORDER BY Notification_ID DESC
-        LIMIT ?
       `;
-      const notificationsRows = await run(notificationsSql, [monitorId, rowLimit]);
+      const notificationsRows = await run(notificationsSql, [monitorId]);
 
       // sell_request
       const sellSql = `
-        SELECT Request_ID, Monitor_ID, EnergyReserves_ID, Energy_Amount, Request_Date, Status
+        SELECT Request_Date, Status
         FROM sell_request
         WHERE Monitor_ID = ?
         ORDER BY Request_Date DESC
-        LIMIT ?
       `;
-      const sellRows = await run(sellSql, [monitorId, rowLimit]);
+      const sellRows = await run(sellSql, [monitorId]);
 
       // solar_panel_data
-      const solarSql = `
-        SELECT Monitor_ID, Date_Calculated,
-          Theoretical_Panel_Production, Exact_Panel_Production, Panel_Efficiency, Total_Energy_Generated
+      const solarParams = hasRange ? [monitorId, from, to] : [monitorId];
+      const solarDSql = `
+        SELECT Date_Calculated, Theoretical_Panel_Production, Exact_Panel_Production, Panel_Efficiency, Total_Energy_Generated
           FROM _computed_solar_panel_data_daily
           WHERE Monitor_ID = ?
+          ${hasRange ? "AND Date_Calculated >= ? AND Date_Calculated <= ?" : ""}
           ORDER BY Date_Calculated DESC
       `;
-      const solarRows = await run(solarSql, [monitorId, rowLimit]);
+      const solarMSql = `
+        SELECT STR_TO_DATE(CONCAT(Year,'-',LPAD(Month,2,'0'),'-01'), '%Y-%m-%d') AS Date, Theoretical_Panel_Production, Avg_Exact_Panel_Production, Avg_Panel_Efficiency, Total_Energy_Generated
+          FROM _computed_solar_panel_data_monthly
+          WHERE Monitor_ID = ?
+        ${hasRange ? "AND MONTH(Date) >= MONTH(?) AND MONTH(Date) <= MONTH(?) AND YEAR(Date) >= YEAR(?) AND YEAR(Date) <= YEAR(?)" : ""}
+          ORDER BY Date DESC
+      `;
+      const solarYSql = `
+        SELECT Year, Theoretical_Panel_Production, Avg_Exact_Panel_Production, Avg_Panel_Efficiency, Total_Energy_Generated
+          FROM _computed_solar_panel_data_yearly
+          WHERE Monitor_ID = ?
+        ${hasRange ? "AND Year >= YEAR(?) AND Year <= YEAR(?)" : ""}
+          ORDER BY Year DESC
+      `;
+      const solarDRows = await run(solarDSql, solarParams);
+      const solarMRows = await run(solarMSql, solarParams);
+      const solarYRows = await run(solarYSql, solarParams);
 
       return res.json({
         monitorId,
         monitors: monitorsRows,
-        energy_consumption: consumptionRows,
-        energy_production: productionRows,
-        environmental_data: envRows,
-        _computed_energy_reserves_daily: reservesRows,
         notifications: notificationsRows,
         sell_request: sellRows,
-        _computed_solar_panel_data_daily: solarRows,
+        _computed_energy_consumption_daily: consumptionDRows,
+        _computed_energy_consumption_monthly: consumptionMRows,
+        _computed_energy_consumption_yearly: consumptionYRows,
+        _computed_energy_production_daily: productionDRows,
+        _computed_energy_production_monthly: productionMRows,
+        _computed_energy_production_yearly: productionYRows,
+        _computed_environmental_data_daily: envDRows,
+        _computed_environmental_data_monthly: envMRows,
+        _computed_environmental_data_yearly: envYRows,
+        _computed_energy_reserves_daily: reservesDRows,
+        _computed_energy_reserves_monthly: reservesMRows,
+        _computed_energy_reserves_yearly: reservesYRows,
+        _computed_solar_panel_data_daily: solarDRows,
+        _computed_solar_panel_data_monthly: solarMRows,
+        _computed_solar_panel_data_yearly: solarYRows,
       });
     } catch (err) {
       console.error("MONITOR DATA DB ERROR:", err);

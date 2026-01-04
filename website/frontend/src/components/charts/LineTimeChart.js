@@ -38,7 +38,6 @@ export default function LineTimeChart({
 
     return data;
   }, [rows, xKey]);
-  console.log("prepared length", prepared.length, "first ts", prepared[0]?.__ts, "last ts", prepared.at(-1)?.__ts);
 
 
   useEffect(() => {

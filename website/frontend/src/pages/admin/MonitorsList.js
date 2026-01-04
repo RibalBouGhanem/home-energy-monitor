@@ -233,15 +233,7 @@ export default function MonitorsList() {
         <SearchableSelect label="Microprocessor" value={fMicro} onChange={setFMicro} options={microOptions} />
         <SearchableSelect label="Installed" value={fInstall} onChange={setFInstall} options={installOptions} />
 
-        <div className="form-group filter-date">
-          <label htmlFor="from-date">From</label>
-          <input id="from-date" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-
-          <label htmlFor="to-date">To</label>
-          <input id="to-date" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
-        </div>
-
-        <button type="button" className="secondary-button monitors-clear" onClick={clearFilters}>
+        <button type="button" className="secondary-button " onClick={clearFilters}>
           Clear filters
         </button>
       </div>

@@ -1,7 +1,9 @@
 #include <Servo.h>
 Servo myservo;
-const int DIFFERENCE_MARGIN = 25;
+const int DIFFERENCE_MARGIN = 25, RESISTANCE = 10000, MAX_V = 5.5;
 int angle = 0, prL, prR, difference;
+float adc_value, voltage, current, power;
+
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
@@ -14,12 +16,13 @@ void loop() {
   prL = analogRead(A0);
   prR = analogRead(A1);
   difference = prL - prR;
-  Serial.print("Sensor L: ");
-  Serial.print(prL);
-  Serial.print("  | Sensor R: ");
-  Serial.print(prR);
-  Serial.print("  | Difference: ");
-  Serial.println(difference);
+
+  adc_value = analogRead(A5);
+  voltage = 0.5*(adc_value*MAX_V/1024.0);
+  current = voltage/RESISTANCE;
+  power = voltage*RESISTANCE;
+  Serial.println(power);
+
   if (difference > DIFFERENCE_MARGIN && angle < 176) {
     // the left photoresistor is recieving more light than the right photoresistor
     angle += 5;

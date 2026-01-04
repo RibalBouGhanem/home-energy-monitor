@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jan 04, 2026 at 02:46 AM
+-- Generation Time: Jan 05, 2026 at 12:23 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -65,11 +65,11 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `compute_consumption_monthly` (IN `p
     cecd.Monitor_ID,
     YEAR(cecd.Date),
     MONTH(cecd.Date),
-    COALESCE(SUM(cecd.Consumption_Value), 0) AS Total_Consumption
+    COALESCE(SUM(cecd.Total_Consumption), 0) AS Total_Consumption
   FROM _computed_energy_consumption_daily cecd
   WHERE YEAR(cecd.Date) = p_year
     AND MONTH(cecd.Date) = p_month
-  GROUP BY cecd.Monitor_ID, YEAR(cecd.Timestamp), MONTH(cecd.Timestamp)
+  GROUP BY cecd.Monitor_ID, YEAR(cecd.Date), MONTH(cecd.Date)
   ON DUPLICATE KEY UPDATE
     Total_Consumption = VALUES(Total_Consumption);
 END$$
@@ -128,23 +128,23 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `compute_production_monthly` (IN `p_
     cepd.Monitor_ID,
     YEAR(cepd.Date) AS Year,
     MONTH(cepd.Date) AS Month,
-    COALESCE(SUM(cepd.Production_Value), 0) AS Total_Production
+    COALESCE(SUM(cepd.Total_Production), 0) AS Total_Production
   FROM _computed_energy_production_daily cepd
   WHERE YEAR(cepd.Date) = p_year
     AND MONTH(cepd.Date) = p_month
-  GROUP BY cepd.Monitor_ID, YEAR(cepd.Timestamp), MONTH(cepd.Timestamp)
+  GROUP BY cepd.Monitor_ID, YEAR(cepd.Date), MONTH(cepd.Date)
   ON DUPLICATE KEY UPDATE
     Total_Production = VALUES(Total_Production);
 END$$
 
 CREATE DEFINER=`root`@`localhost` PROCEDURE `compute_production_yearly` (IN `p_year` INT)   BEGIN
-  INSERT INTO computed_energy_production_yearly
+  INSERT INTO _computed_energy_production_yearly
     (Monitor_ID, Year, Total_Production)
   SELECT
     cepm.Monitor_ID,
     YEAR(cepm.Year) AS Year,
     COALESCE(SUM(cepm.Total_Production), 0) AS Total_Production
-  FROM computed_energy_production_monthly cepm
+  FROM _computed_energy_production_monthly cepm
   WHERE YEAR(cepm.Year) = p_year
   GROUP BY cepm.Monitor_ID, YEAR(cepm.Year)
   ON DUPLICATE KEY UPDATE
@@ -174,6 +174,23 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `compute_reserves_daily` (IN `p_date
    AND cons.`Date` = p_date
   ON DUPLICATE KEY UPDATE
     Reserve_Amount = VALUES(Reserve_Amount);
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `compute_reserves_monthly` (IN `p_year` INT, IN `p_month` INT)   BEGIN
+  INSERT INTO _computed_energy_reserves_monthly (Monitor_ID, Month, Year, Avg_Reserve_Amount)
+  SELECT
+    m.Monitor_ID,
+    p_month,
+    p_year,
+    COALESCE(AVG(cerd.Reserve_Amount), 0) AS Avg_Reserve_Amount
+  FROM monitors m
+  LEFT JOIN _computed_energy_reserves_daily cerd
+    ON cerd.Monitor_ID = m.Monitor_ID
+   AND YEAR(cerd.Date) = p_year
+    AND MONTH(cerd.Date) = p_month
+  GROUP BY m.Monitor_ID
+  ON DUPLICATE KEY UPDATE
+    Avg_Reserve_Amount = VALUES(Avg_Reserve_Amount);
 END$$
 
 CREATE DEFINER=`root`@`localhost` PROCEDURE `compute_solar_daily` (IN `p_day` DATE)   BEGIN
@@ -698,7 +715,118 @@ INSERT INTO `energy_production` (`Production_ID`, `Monitor_ID`, `Timestamp`, `Pr
 (197, 11, '2024-03-06 20:00:00', 1.38),
 (198, 13, '2024-03-03 20:00:00', 2.98),
 (199, 4, '2024-03-08 20:00:00', 3.8),
-(200, 3, '2024-02-29 20:00:00', 0.5);
+(200, 3, '2024-02-29 20:00:00', 0.5),
+(202, 1, '2026-01-04 23:21:49', 10839.8),
+(203, 1, '2026-01-04 23:21:49', 11767.6),
+(204, 1, '2026-01-04 23:21:49', 12036.1),
+(205, 1, '2026-01-04 23:21:50', 11572.3),
+(206, 1, '2026-01-04 23:21:50', 12133.8),
+(207, 1, '2026-01-04 23:21:50', 11987.3),
+(208, 1, '2026-01-04 23:21:50', 11572.3),
+(209, 1, '2026-01-04 23:21:51', 12255.9),
+(210, 1, '2026-01-04 23:21:51', 11840.8),
+(211, 1, '2026-01-04 23:21:51', 11621.1),
+(212, 1, '2026-01-04 23:21:51', 12280.3),
+(213, 1, '2026-01-04 23:21:52', 11669.9),
+(214, 1, '2026-01-04 23:21:52', 11743.2),
+(215, 1, '2026-01-04 23:21:52', 12280.3),
+(216, 1, '2026-01-04 23:21:52', 11596.7),
+(217, 1, '2026-01-04 23:21:53', 11889.7),
+(218, 1, '2026-01-04 23:21:53', 12207),
+(219, 1, '2026-01-04 23:21:53', 11547.8),
+(220, 1, '2026-01-04 23:21:53', 11962.9),
+(221, 1, '2026-01-04 23:21:54', 12085),
+(222, 1, '2026-01-04 23:21:54', 11523.4),
+(223, 1, '2026-01-04 23:21:54', 12133.8),
+(224, 1, '2026-01-04 23:21:54', 11938.5),
+(225, 1, '2026-01-04 23:21:55', 11547.8),
+(226, 1, '2026-01-04 23:21:55', 12231.5),
+(227, 1, '2026-01-04 23:21:55', 11792),
+(228, 1, '2026-01-04 23:21:55', 11596.7),
+(229, 1, '2026-01-04 23:21:56', 12304.7),
+(230, 1, '2026-01-04 23:21:56', 11645.5),
+(231, 1, '2026-01-04 23:21:56', 11743.2),
+(232, 1, '2026-01-04 23:21:56', 12255.9),
+(233, 1, '2026-01-04 23:21:57', 11572.3),
+(234, 1, '2026-01-04 23:21:57', 11914.1),
+(235, 1, '2026-01-04 23:21:57', 12182.6),
+(236, 1, '2026-01-04 23:21:57', 11523.4),
+(237, 1, '2026-01-04 23:21:58', 12011.7),
+(238, 1, '2026-01-04 23:21:58', 12036.1),
+(239, 1, '2026-01-04 23:21:58', 11547.8),
+(240, 1, '2026-01-04 23:21:58', 12158.2),
+(241, 1, '2026-01-04 23:21:59', 11865.2),
+(242, 1, '2026-01-04 23:21:59', 11596.7),
+(243, 1, '2026-01-04 23:21:59', 12255.9),
+(244, 1, '2026-01-04 23:21:59', 11694.3),
+(245, 1, '2026-01-04 23:22:00', 11718.8),
+(246, 1, '2026-01-04 23:22:00', 12255.9),
+(247, 1, '2026-01-04 23:22:00', 11572.3),
+(248, 1, '2026-01-04 23:22:00', 11865.2),
+(249, 1, '2026-01-04 23:22:01', 12158.2),
+(250, 1, '2026-01-04 23:22:01', 11523.4),
+(251, 1, '2026-01-04 23:22:01', 12011.7),
+(252, 1, '2026-01-04 23:22:01', 12036.1),
+(253, 1, '2026-01-04 23:22:02', 11547.8),
+(254, 1, '2026-01-04 23:22:02', 12182.6),
+(255, 1, '2026-01-04 23:22:02', 11840.8),
+(256, 1, '2026-01-04 23:22:02', 11596.7),
+(257, 1, '2026-01-04 23:22:03', 12255.9),
+(258, 1, '2026-01-04 23:22:03', 11645.5),
+(259, 1, '2026-01-04 23:22:03', 11767.6),
+(260, 1, '2026-01-04 23:22:03', 12255.9),
+(261, 1, '2026-01-04 23:22:04', 11523.4),
+(262, 1, '2026-01-04 23:22:04', 11938.5),
+(263, 1, '2026-01-04 23:22:04', 12109.4),
+(264, 1, '2026-01-04 23:22:04', 11523.4),
+(265, 1, '2026-01-04 23:22:05', 12109.4),
+(266, 1, '2026-01-04 23:22:05', 11914.1),
+(267, 1, '2026-01-04 23:22:05', 11572.3),
+(268, 1, '2026-01-04 23:22:05', 12231.5),
+(269, 1, '2026-01-04 23:22:06', 11669.9),
+(270, 1, '2026-01-04 23:22:06', 11694.3),
+(271, 1, '2026-01-04 23:22:06', 12255.9),
+(272, 1, '2026-01-04 23:22:06', 11572.3),
+(273, 1, '2026-01-04 23:22:07', 11889.7),
+(274, 1, '2026-01-04 23:22:07', 12158.2),
+(275, 1, '2026-01-04 23:22:07', 11523.4),
+(276, 1, '2026-01-04 23:22:07', 12036.1),
+(277, 1, '2026-01-04 23:22:08', 12011.7),
+(278, 1, '2026-01-04 23:22:08', 11523.4),
+(279, 1, '2026-01-04 23:22:08', 12207),
+(280, 1, '2026-01-04 23:22:08', 11816.4),
+(281, 1, '2026-01-04 23:22:09', 11621.1),
+(282, 1, '2026-01-04 23:22:09', 12255.9),
+(283, 1, '2026-01-04 23:22:09', 11621.1),
+(284, 1, '2026-01-04 23:22:09', 11792),
+(285, 1, '2026-01-04 23:22:10', 12255.9),
+(286, 1, '2026-01-04 23:22:10', 11523.4),
+(287, 1, '2026-01-04 23:22:10', 11914.1),
+(288, 1, '2026-01-04 23:22:11', 12085),
+(289, 1, '2026-01-04 23:22:11', 11523.4),
+(290, 1, '2026-01-04 23:22:11', 12133.8),
+(291, 1, '2026-01-04 23:22:11', 11865.2),
+(292, 1, '2026-01-04 23:22:12', 11572.3),
+(293, 1, '2026-01-04 23:22:12', 12255.9),
+(294, 1, '2026-01-04 23:22:12', 11645.5),
+(295, 1, '2026-01-04 23:22:12', 11743.2),
+(296, 1, '2026-01-04 23:22:13', 12255.9),
+(297, 1, '2026-01-04 23:22:13', 11547.8),
+(298, 1, '2026-01-04 23:22:13', 11889.7),
+(299, 1, '2026-01-04 23:22:13', 12109.4),
+(300, 1, '2026-01-04 23:22:14', 11523.4),
+(301, 1, '2026-01-04 23:22:14', 12133.8),
+(302, 1, '2026-01-04 23:22:14', 11914.1),
+(303, 1, '2026-01-04 23:22:14', 11572.3),
+(304, 1, '2026-01-04 23:22:15', 12255.9),
+(305, 1, '2026-01-04 23:22:15', 11694.3),
+(306, 1, '2026-01-04 23:22:15', 11743.2),
+(307, 1, '2026-01-04 23:22:15', 12280.3),
+(308, 1, '2026-01-04 23:22:16', 11572.3),
+(309, 1, '2026-01-04 23:22:16', 11914.1),
+(310, 1, '2026-01-04 23:22:16', 12133.8),
+(311, 1, '2026-01-04 23:22:16', 11499),
+(312, 1, '2026-01-04 23:22:17', 12085);
 
 --
 -- Triggers `energy_production`
@@ -1033,7 +1161,21 @@ INSERT INTO `recompute_days` (`Date`, `needs_consumption_daily`, `needs_producti
 ('2025-12-07', 1, 1, 1, 1, '2026-01-03 20:23:04'),
 ('2025-12-08', 1, 1, 1, 1, '2026-01-03 20:23:04'),
 ('2025-12-09', 1, 1, 1, 1, '2026-01-03 20:23:04'),
-('2025-12-10', 1, 1, 1, 1, '2026-01-03 20:23:04');
+('2025-12-10', 1, 1, 1, 1, '2026-01-03 20:23:04'),
+('2026-01-05', 0, 1, 1, 1, '2026-01-04 23:21:49');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `sample_table`
+--
+
+CREATE TABLE `sample_table` (
+  `ID` int(11) NOT NULL,
+  `Voltage` float NOT NULL,
+  `Current` float NOT NULL,
+  `Power` float NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -1141,6 +1283,29 @@ CREATE TABLE `_computed_energy_consumption_monthly` (
   `Month` tinyint(4) NOT NULL,
   `Total_Consumption` decimal(12,2) NOT NULL DEFAULT 0.00
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `_computed_energy_consumption_monthly`
+--
+
+INSERT INTO `_computed_energy_consumption_monthly` (`Monitor_ID`, `Year`, `Month`, `Total_Consumption`) VALUES
+(2, 2024, 3, 30.24),
+(3, 2024, 3, 29.04),
+(4, 2024, 3, 95.04),
+(5, 2024, 3, 52.56),
+(6, 2024, 3, 23.04),
+(7, 2024, 3, 92.88),
+(8, 2024, 3, 74.40),
+(10, 2024, 3, 17.28),
+(11, 2024, 3, 71.04),
+(12, 2024, 3, 128.88),
+(14, 2024, 3, 28.32),
+(15, 2024, 3, 91.68),
+(16, 2024, 3, 27.12),
+(17, 2024, 3, 46.08),
+(18, 2024, 3, 56.16),
+(19, 2024, 3, 95.04),
+(20, 2024, 3, 55.92);
 
 -- --------------------------------------------------------
 
@@ -1255,26 +1420,6 @@ INSERT INTO `_computed_energy_reserves_daily` (`EnergyReserves_ID`, `Monitor_ID`
 (18, 18, '2024-03-08', 0.00),
 (19, 19, '2024-03-08', 0.00),
 (20, 20, '2024-03-08', 52.32),
-(33, 1, '0000-00-00', 0.00),
-(34, 2, '0000-00-00', 0.00),
-(35, 3, '0000-00-00', 0.00),
-(36, 4, '0000-00-00', 0.00),
-(37, 5, '0000-00-00', 0.00),
-(38, 6, '0000-00-00', 0.00),
-(39, 7, '0000-00-00', 0.00),
-(40, 8, '0000-00-00', 0.00),
-(41, 9, '0000-00-00', 0.00),
-(42, 10, '0000-00-00', 0.00),
-(43, 11, '0000-00-00', 0.00),
-(44, 12, '0000-00-00', 0.00),
-(45, 13, '0000-00-00', 0.00),
-(46, 14, '0000-00-00', 0.00),
-(47, 15, '0000-00-00', 0.00),
-(48, 16, '0000-00-00', 0.00),
-(49, 17, '0000-00-00', 0.00),
-(50, 18, '0000-00-00', 0.00),
-(51, 19, '0000-00-00', 0.00),
-(52, 20, '0000-00-00', 0.00),
 (64, 1, '2024-03-07', 51.12),
 (65, 2, '2024-03-07', 40.32),
 (66, 3, '2024-03-07', 0.00),
@@ -1294,7 +1439,104 @@ INSERT INTO `_computed_energy_reserves_daily` (`EnergyReserves_ID`, `Monitor_ID`
 (80, 17, '2024-03-07', 78.72),
 (81, 18, '2024-03-07', 0.00),
 (82, 19, '2024-03-07', 0.00),
-(83, 20, '2024-03-07', 0.00);
+(83, 20, '2024-03-07', 0.00),
+(104, 1, '2024-03-21', 200.00);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `_computed_energy_reserves_monthly`
+--
+
+CREATE TABLE `_computed_energy_reserves_monthly` (
+  `EnergyReserves_ID` int(11) NOT NULL,
+  `Monitor_ID` int(11) NOT NULL,
+  `Month` tinyint(4) NOT NULL,
+  `Year` smallint(6) NOT NULL,
+  `Avg_Reserve_Amount` decimal(10,2) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `_computed_energy_reserves_monthly`
+--
+
+INSERT INTO `_computed_energy_reserves_monthly` (`EnergyReserves_ID`, `Monitor_ID`, `Month`, `Year`, `Avg_Reserve_Amount`) VALUES
+(33, 2, 3, 2024, 59.40),
+(34, 3, 3, 2024, 0.00),
+(35, 4, 3, 2024, 26.88),
+(36, 5, 3, 2024, 41.40),
+(37, 6, 3, 2024, 75.84),
+(38, 7, 3, 2024, 0.00),
+(39, 8, 3, 2024, 0.00),
+(40, 9, 3, 2024, 65.76),
+(41, 10, 3, 2024, 31.92),
+(42, 11, 3, 2024, 33.24),
+(43, 12, 3, 2024, 0.00),
+(44, 13, 3, 2024, 9.84),
+(45, 14, 3, 2024, 0.00),
+(46, 15, 3, 2024, 6.36),
+(47, 16, 3, 2024, 0.00),
+(48, 17, 3, 2024, 55.68),
+(49, 18, 3, 2024, 0.00),
+(50, 19, 3, 2024, 0.00),
+(51, 20, 3, 2024, 26.16),
+(63, 1, 3, 2024, 95.64);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `_computed_energy_reserves_yearly`
+--
+
+CREATE TABLE `_computed_energy_reserves_yearly` (
+  `EnergyReserves_ID` int(11) NOT NULL,
+  `Monitor_ID` int(11) NOT NULL,
+  `Year` smallint(6) NOT NULL,
+  `Avg_Reserve_Amount` decimal(10,2) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `_computed_environmental_data_daily`
+--
+
+CREATE TABLE `_computed_environmental_data_daily` (
+  `Monitor_ID` int(11) NOT NULL,
+  `Date` date NOT NULL,
+  `Avg_Light_Intensity` float NOT NULL,
+  `Avg_Temperature` float NOT NULL,
+  `Avg_Humidity` float NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `_computed_environmental_data_monthly`
+--
+
+CREATE TABLE `_computed_environmental_data_monthly` (
+  `Monitor_ID` int(11) NOT NULL,
+  `Month` tinyint(4) NOT NULL,
+  `Year` smallint(6) NOT NULL,
+  `Avg_Light_Intensity` float NOT NULL,
+  `Avg_Temperature` float NOT NULL,
+  `Avg_Humidity` float NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `_computed_environmental_data_yearly`
+--
+
+CREATE TABLE `_computed_environmental_data_yearly` (
+  `Monitor_ID` int(11) NOT NULL,
+  `Year` smallint(6) NOT NULL,
+  `Avg_Light_Intensity` float NOT NULL,
+  `Avg_Temperature` float NOT NULL,
+  `Avg_Humidity` float NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -1317,6 +1559,37 @@ CREATE TABLE `_computed_solar_panel_data_daily` (
 
 INSERT INTO `_computed_solar_panel_data_daily` (`Monitor_ID`, `Date_Calculated`, `Theoretical_Panel_Production`, `Exact_Panel_Production`, `Panel_Efficiency`, `Total_Energy_Generated`) VALUES
 (1, '2024-03-08', 1950, 89.04, 0.0456615, 89.04);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `_computed_solar_panel_data_monthly`
+--
+
+CREATE TABLE `_computed_solar_panel_data_monthly` (
+  `Monitor_ID` int(11) NOT NULL,
+  `Month` tinyint(4) NOT NULL,
+  `Year` smallint(6) NOT NULL,
+  `Theoretical_Panel_Production` float NOT NULL,
+  `Avg_Exact_Panel_Production` float NOT NULL,
+  `Avg_Panel_Efficiency` float NOT NULL,
+  `Total_Energy_Generated` float NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `_computed_solar_panel_data_yearly`
+--
+
+CREATE TABLE `_computed_solar_panel_data_yearly` (
+  `Monitor_ID` int(11) NOT NULL,
+  `Year` smallint(6) NOT NULL,
+  `Theoretical_Panel_Production` float NOT NULL,
+  `Avg_Exact_Panel_Production` float NOT NULL,
+  `Avg_Panel_Efficiency` float NOT NULL,
+  `Total_Energy_Generated` float NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Indexes for dumped tables
@@ -1414,14 +1687,14 @@ ALTER TABLE `_computed_energy_consumption_daily`
 -- Indexes for table `_computed_energy_consumption_monthly`
 --
 ALTER TABLE `_computed_energy_consumption_monthly`
-  ADD PRIMARY KEY (`Year`,`Month`),
+  ADD PRIMARY KEY (`Year`,`Month`,`Monitor_ID`) USING BTREE,
   ADD UNIQUE KEY `uq_cecm` (`Monitor_ID`,`Year`,`Month`);
 
 --
 -- Indexes for table `_computed_energy_consumption_yearly`
 --
 ALTER TABLE `_computed_energy_consumption_yearly`
-  ADD PRIMARY KEY (`Year`),
+  ADD PRIMARY KEY (`Year`,`Monitor_ID`) USING BTREE,
   ADD UNIQUE KEY `uq_cecy` (`Monitor_ID`,`Year`);
 
 --
@@ -1435,14 +1708,14 @@ ALTER TABLE `_computed_energy_production_daily`
 -- Indexes for table `_computed_energy_production_monthly`
 --
 ALTER TABLE `_computed_energy_production_monthly`
-  ADD PRIMARY KEY (`Year`,`Month`),
+  ADD PRIMARY KEY (`Year`,`Month`,`Monitor_ID`) USING BTREE,
   ADD UNIQUE KEY `uq_cepm` (`Monitor_ID`,`Year`,`Month`);
 
 --
 -- Indexes for table `_computed_energy_production_yearly`
 --
 ALTER TABLE `_computed_energy_production_yearly`
-  ADD PRIMARY KEY (`Year`),
+  ADD PRIMARY KEY (`Year`,`Monitor_ID`) USING BTREE,
   ADD UNIQUE KEY `uq_cepy` (`Monitor_ID`,`Year`);
 
 --
@@ -1450,15 +1723,66 @@ ALTER TABLE `_computed_energy_production_yearly`
 --
 ALTER TABLE `_computed_energy_reserves_daily`
   ADD PRIMARY KEY (`EnergyReserves_ID`),
-  ADD UNIQUE KEY `uq_res_day` (`Monitor_ID`,`Date`) USING BTREE,
+  ADD UNIQUE KEY `uq_erd` (`Monitor_ID`,`Date`) USING BTREE,
   ADD KEY `idx_energy_reserves_monitor` (`Monitor_ID`);
+
+--
+-- Indexes for table `_computed_energy_reserves_monthly`
+--
+ALTER TABLE `_computed_energy_reserves_monthly`
+  ADD PRIMARY KEY (`EnergyReserves_ID`),
+  ADD UNIQUE KEY `uq_erm` (`Monitor_ID`,`Month`) USING BTREE,
+  ADD KEY `idx_energy_reserves_monitor` (`Monitor_ID`);
+
+--
+-- Indexes for table `_computed_energy_reserves_yearly`
+--
+ALTER TABLE `_computed_energy_reserves_yearly`
+  ADD PRIMARY KEY (`EnergyReserves_ID`),
+  ADD UNIQUE KEY `uq_ery` (`Monitor_ID`,`Year`) USING BTREE,
+  ADD KEY `idx_energy_reserves_monitor` (`Monitor_ID`);
+
+--
+-- Indexes for table `_computed_environmental_data_daily`
+--
+ALTER TABLE `_computed_environmental_data_daily`
+  ADD PRIMARY KEY (`Monitor_ID`,`Date`),
+  ADD UNIQUE KEY `uq_edd` (`Monitor_ID`,`Date`);
+
+--
+-- Indexes for table `_computed_environmental_data_monthly`
+--
+ALTER TABLE `_computed_environmental_data_monthly`
+  ADD PRIMARY KEY (`Monitor_ID`,`Month`,`Year`) USING BTREE,
+  ADD UNIQUE KEY `uq_edm` (`Monitor_ID`,`Month`,`Year`) USING BTREE;
+
+--
+-- Indexes for table `_computed_environmental_data_yearly`
+--
+ALTER TABLE `_computed_environmental_data_yearly`
+  ADD PRIMARY KEY (`Monitor_ID`,`Year`),
+  ADD UNIQUE KEY `uq_edy` (`Monitor_ID`,`Year`);
 
 --
 -- Indexes for table `_computed_solar_panel_data_daily`
 --
 ALTER TABLE `_computed_solar_panel_data_daily`
   ADD PRIMARY KEY (`Monitor_ID`,`Date_Calculated`) USING BTREE,
-  ADD UNIQUE KEY `uq_solar_date` (`Monitor_ID`,`Date_Calculated`);
+  ADD UNIQUE KEY `uq_spdd` (`Monitor_ID`,`Date_Calculated`) USING BTREE;
+
+--
+-- Indexes for table `_computed_solar_panel_data_monthly`
+--
+ALTER TABLE `_computed_solar_panel_data_monthly`
+  ADD PRIMARY KEY (`Monitor_ID`,`Month`,`Year`) USING BTREE,
+  ADD UNIQUE KEY `uq_spdm` (`Monitor_ID`,`Month`,`Year`) USING BTREE;
+
+--
+-- Indexes for table `_computed_solar_panel_data_yearly`
+--
+ALTER TABLE `_computed_solar_panel_data_yearly`
+  ADD PRIMARY KEY (`Monitor_ID`,`Year`) USING BTREE,
+  ADD UNIQUE KEY `uq_spdy` (`Monitor_ID`,`Year`) USING BTREE;
 
 --
 -- AUTO_INCREMENT for dumped tables
@@ -1480,7 +1804,7 @@ ALTER TABLE `energy_consumption`
 -- AUTO_INCREMENT for table `energy_production`
 --
 ALTER TABLE `energy_production`
-  MODIFY `Production_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=201;
+  MODIFY `Production_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=313;
 
 --
 -- AUTO_INCREMENT for table `environmental_data`
@@ -1516,7 +1840,37 @@ ALTER TABLE `system_logs`
 -- AUTO_INCREMENT for table `_computed_energy_reserves_daily`
 --
 ALTER TABLE `_computed_energy_reserves_daily`
-  MODIFY `EnergyReserves_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=104;
+  MODIFY `EnergyReserves_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=105;
+
+--
+-- AUTO_INCREMENT for table `_computed_energy_reserves_monthly`
+--
+ALTER TABLE `_computed_energy_reserves_monthly`
+  MODIFY `EnergyReserves_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=66;
+
+--
+-- AUTO_INCREMENT for table `_computed_energy_reserves_yearly`
+--
+ALTER TABLE `_computed_energy_reserves_yearly`
+  MODIFY `EnergyReserves_ID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `_computed_environmental_data_daily`
+--
+ALTER TABLE `_computed_environmental_data_daily`
+  MODIFY `Monitor_ID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `_computed_environmental_data_monthly`
+--
+ALTER TABLE `_computed_environmental_data_monthly`
+  MODIFY `Monitor_ID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `_computed_environmental_data_yearly`
+--
+ALTER TABLE `_computed_environmental_data_yearly`
+  MODIFY `Monitor_ID` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- Constraints for dumped tables
@@ -1572,7 +1926,7 @@ ALTER TABLE `sell_request`
 -- Constraints for table `solar_panel_config`
 --
 ALTER TABLE `solar_panel_config`
-  ADD CONSTRAINT `solar_panel_config_ibfk_1` FOREIGN KEY (`Monitor_ID`) REFERENCES `monitors` (`Monitor_ID`) ON DELETE CASCADE;
+  ADD CONSTRAINT `solar_panel_config_ibfk_1` FOREIGN KEY (`Monitor_ID`) REFERENCES `monitors` (`Monitor_ID`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `system_logs`
@@ -1623,10 +1977,52 @@ ALTER TABLE `_computed_energy_reserves_daily`
   ADD CONSTRAINT `fk_er_monitor` FOREIGN KEY (`Monitor_ID`) REFERENCES `monitors` (`Monitor_ID`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
+-- Constraints for table `_computed_energy_reserves_monthly`
+--
+ALTER TABLE `_computed_energy_reserves_monthly`
+  ADD CONSTRAINT `fk_cerm_monitor` FOREIGN KEY (`Monitor_ID`) REFERENCES `monitors` (`Monitor_ID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `_computed_energy_reserves_yearly`
+--
+ALTER TABLE `_computed_energy_reserves_yearly`
+  ADD CONSTRAINT `fk_cery_monitor` FOREIGN KEY (`Monitor_ID`) REFERENCES `monitors` (`Monitor_ID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `_computed_environmental_data_daily`
+--
+ALTER TABLE `_computed_environmental_data_daily`
+  ADD CONSTRAINT `fk_cedd_monitor` FOREIGN KEY (`Monitor_ID`) REFERENCES `monitors` (`Monitor_ID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `_computed_environmental_data_monthly`
+--
+ALTER TABLE `_computed_environmental_data_monthly`
+  ADD CONSTRAINT `fk_cedm_monitor` FOREIGN KEY (`Monitor_ID`) REFERENCES `monitors` (`Monitor_ID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `_computed_environmental_data_yearly`
+--
+ALTER TABLE `_computed_environmental_data_yearly`
+  ADD CONSTRAINT `fk_cedy_monitor` FOREIGN KEY (`Monitor_ID`) REFERENCES `monitors` (`Monitor_ID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
 -- Constraints for table `_computed_solar_panel_data_daily`
 --
 ALTER TABLE `_computed_solar_panel_data_daily`
   ADD CONSTRAINT `fk_solar_system_data_monitor` FOREIGN KEY (`Monitor_ID`) REFERENCES `monitors` (`Monitor_ID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `_computed_solar_panel_data_monthly`
+--
+ALTER TABLE `_computed_solar_panel_data_monthly`
+  ADD CONSTRAINT `fk_spdm_monitor` FOREIGN KEY (`Monitor_ID`) REFERENCES `monitors` (`Monitor_ID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `_computed_solar_panel_data_yearly`
+--
+ALTER TABLE `_computed_solar_panel_data_yearly`
+  ADD CONSTRAINT `fk_spdy_monitor` FOREIGN KEY (`Monitor_ID`) REFERENCES `monitors` (`Monitor_ID`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 DELIMITER $$
 --

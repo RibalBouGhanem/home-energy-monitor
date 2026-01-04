@@ -7,7 +7,7 @@ import "../styles/LoginPage.css"
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const { user, token, setUser, setToken } = useAuth();
+  const { user, token, setUser, setToken, monitors, setMonitors} = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,12 +22,13 @@ const LoginPage = () => {
       const res = await api.post("/login", { email, password });
       setUser(res.data.user);
       setToken(res.data.token);
+	  setMonitors(res.data.monitors);
 
       // role-based redirect
       if (res.data.user.isAdmin) {
-		navigate("/admin");
+		navigate("/admin/users");
 	  } else {
-		navigate("/");
+		navigate("/home");
 	  }
     } catch (err) {
       setError(err.response?.data?.message || "Login failed");

@@ -168,12 +168,14 @@ const consumptionIndexByTs = useMemo(() => {
       .map((t) => (typeof t === "string" ? t : t?.value))
       .filter(Boolean)
       .map((t) => resolveTableByInterval(t, interval));
+
+      const uniqueKeys = [...new Set(resolvedTables)];
+      setLoadedKeys(uniqueKeys);
       
-      setLoadedKeys([...new Set(resolvedTables)]);
-      
+      console.log(`/api/monitor/${monitorId}/data?${params.toString()}`);
       const res = await api.get(`/api/monitor/${monitorId}/data?${params.toString()}`);
-      
-    setReadingsData(res.data);
+      const filtered = filterPayloadByRange(res.data, from, to, uniqueKeys);
+    setReadingsData(filtered);
 
     } catch (e) {
       console.log("FETCH MONITOR DATA ERROR:", e);
@@ -186,6 +188,47 @@ const consumptionIndexByTs = useMemo(() => {
 
   useEffect(() => {loadMonitors();}, []);
 
+  const toTime = (v) => {
+    if (!v) return NaN;
+    // supports "YYYY-MM-DD", ISO strings, Date objects
+    const t = new Date(v).getTime();
+    return Number.isFinite(t) ? t : NaN;
+  };
+  const inDateRange = (row, from, to) => {
+    const x =
+      row?.Timestamp ??
+      row?.Date_Calculated ??
+      row?.Date ??
+      row?.timestamp ??
+      row?.date_calculated;
+
+    const tx = toTime(x);
+    if (!Number.isFinite(tx)) return false;
+
+    const a = from ? toTime(from) : -Infinity;
+    const b = to ? toTime(to) : Infinity;
+
+    return tx >= a && tx <= b;
+  };
+  const filterPayloadByRange = (payload, from, to, keysToFilter) => {
+    if (!payload || (!from && !to)) return payload;
+
+    // If keysToFilter is provided, only filter those arrays (safer + faster).
+    const out = { ...payload };
+
+    const keys = Array.isArray(keysToFilter) && keysToFilter.length
+      ? keysToFilter
+      : Object.keys(out);
+
+    for (const k of keys) {
+      if (Array.isArray(out[k])) {
+        out[k] = out[k].filter((row) => inDateRange(row, from, to));
+      }
+    }
+
+    return out;
+  };
+  
   const highlightPoint = (chart, index) => {
     if (!chart || index == null) return;
     chart.setActiveElements([{ datasetIndex: 0, index }]);

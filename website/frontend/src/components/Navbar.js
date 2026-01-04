@@ -23,7 +23,6 @@ export default function Navbar() {
 
   const links = user?.isAdmin
     ? [
-        { to: "/admin", label: "Dashboard", end: true },
         { to: "/admin/users", label: "Users" },
         { to: "/admin/monitors", label: "Monitors" },
         { to: "/admin/houses", label: "Houses" },
@@ -31,8 +30,7 @@ export default function Navbar() {
         { to: "/admin/system-logs", label: "System Logs" },
       ]
     : [
-        { to: "/", label: "Home", end: true },
-        { to: "/dashboard", label: "Dashboard" },
+        { to: "/home", label: "Home", end: true },
         { to: "/analytics", label: "Analytics" },
         { to: "/reports", label: "Reports" },
         { to: "/contact", label: "Contact" },

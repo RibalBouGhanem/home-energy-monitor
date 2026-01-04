@@ -7,7 +7,7 @@ import RequireRole from "../auth/RequireRole";
 import LoginPage from "../pages/LoginPage";
 
 import UserLayout from "../layouts/UserLayout";
-import Hero from "../components/hero/Hero";
+import Home from "../pages/user/Home";
 import Dashboard from "../components/dashboard/Dashboard";
 import Analytics from "../components/analytics/Analytics";
 import Reports from "../components/Reports";
@@ -15,7 +15,6 @@ import Contact from "../components/Contact";
 
 
 import AdminLayout from "../layouts/AdminLayout";
-import AdminDashboard from "../pages/admin/AdminDashboard";
 import UsersList from "../pages/admin/UsersList";
 import UserCreate from "../pages/admin/UserCreate";
 import HousesList from "../pages/admin/HousesList";
@@ -31,7 +30,7 @@ export default function AppRoutes() {
       {/*User area */}
       <Route element={<RequireRole userOnly />}>
           <Route element={<UserLayout />}>
-          <Route path="/" element={<Hero />} />
+          <Route path="/home" element={<Home />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/reports" element={<Reports />} />
@@ -42,7 +41,6 @@ export default function AppRoutes() {
       {/* Admin-only area */}
       <Route element={<RequireRole adminOnly />}>
         <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<AdminDashboard />} />
           <Route path="users" element={<UsersList />} />
           <Route path="users/new" element={<UserCreate />} />
           <Route path="houses" element={<HousesList />} />

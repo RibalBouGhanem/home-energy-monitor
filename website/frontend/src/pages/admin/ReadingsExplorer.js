@@ -41,7 +41,7 @@ export default function ReadingsExplorer() {
 
   const getMonitorId = (m) => (m.Monitor_ID ?? "").toString();
   const monitorOptions = useMemo(() => monitors.map((m) => getMonitorId(m)).filter(Boolean), [monitors]);
-  const tableOptions = useMemo(() => ["energy_consumption", "energy_production", "environmental_data", "solar_panel_data"], []);
+  const tableOptions = useMemo(() => ["energy_consumption", "energy_production", "environmental_data", "_computed_solar_panel_data_daily"], []);
 
   const consumptionIndexByTs = useMemo(() => {
     const map = new Map();
@@ -69,7 +69,7 @@ export default function ReadingsExplorer() {
 
   const solarIndexByTs = useMemo(() => {
     const map = new Map();
-    (readingsData?.solar_panel_data || []).forEach((r, i) => {
+    (readingsData?._computed_solar_panel_data_daily || []).forEach((r, i) => {
       if (r?.Date_Calculated) map.set(String(r.Date_Calculated), i);
     });
     return map;
@@ -139,8 +139,8 @@ export default function ReadingsExplorer() {
       });
 
       setReadingsData(pruned);
-      console.log("SOLAR KEYS:", Object.keys(readingsData?.solar_panel_data?.[0] || {}));
-      console.log("SOLAR yKeys:", solarYKeys);
+      console.log("SOLAR KEYS:", res.data);
+      // console.log("SOLAR yKeys:", solarYKeys);
 
     } catch (e) {
       console.log("FETCH MONITOR DATA ERROR:", e);
@@ -203,7 +203,7 @@ export default function ReadingsExplorer() {
                   ["energy_reserves", readingsData.energy_reserves],
                   ["notifications", readingsData.notifications],
                   ["sell_request", readingsData.sell_request],
-                  ["solar_panel_data", readingsData.solar_panel_data],
+                  ["_computed_solar_panel_data_daily", readingsData._computed_solar_panel_data_daily],
                 ];
                 const prefix = `monitor_${monitorId}`;
                 tables.forEach(([name, rows]) => { if (Array.isArray(rows) && rows.length > 0) exportRowsToCsv(`${prefix}_${name}.csv`, rows);});
@@ -352,12 +352,12 @@ export default function ReadingsExplorer() {
             </div>
           )}
 
-          {readingsData?.solar_panel_data && (
+          {readingsData?._computed_solar_panel_data_daily && (
             <div className="readings-row">
               <div className="readings-table">
                 <DataTable
                   title="Solar Panels Data"
-                  rows={readingsData.solar_panel_data} 
+                  rows={readingsData._computed_solar_panel_data_daily} 
                   onRowHover={(row) => {
                     const idx = solarIndexByTs.get(String(row.Date_Calculated));
                     highlightPoint(solarChartRef.current, idx);
@@ -374,7 +374,7 @@ export default function ReadingsExplorer() {
                 <ChartCard title="Solar Panels Data">
                   <LineTimeChart
                     id="solarPanelsChart"
-                    rows={readingsData.solar_panel_data}
+                    rows={readingsData._computed_solar_panel_data_daily}
                     xKey="Date_Calculated"
                     yKeys={solarYKeys}
                     labels={solarLabels}

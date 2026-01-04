@@ -94,17 +94,22 @@ app.post("/api/accounts", async (req, res) => {
       }
 
       // log after success
-      const actorEmail = getActorEmail(req);
-      await insertSystemLog(db, req, actorEmail, {
-        action: "CREATE",
-        table: "accounts",
-        record: { email: req.body.email },
-      });
+      try {
+        const actorEmail = getActorEmail(req);
+        await insertSystemLog(db, actorEmail, {
+          action: "CREATE",
+          table: "accounts",
+          record: { email: req.body.email },
+        });
+      } catch (logErr) {
+        console.error("SYSTEM LOG INSERT FAILED (non-fatal):", logErr);
+      }
+
 
       return res.json({ message: "Account created successfully" });
     });
   } catch (e) {
-    console.log("SYSTEM LOG ERROR:", e);
+    console.log("HASH/REQUEST ERROR::", e);
     return res.status(500).json({ message: "DB error" });
   }
 });
@@ -271,11 +276,11 @@ app.get("/api/monitor/:monitorId/data", (req, res) => {
 
       // energy_reserves
       const reservesSql = `
-        SELECT EnergyReserves_ID, Monitor_ID, Timestamp, Reserve_Amount
-        FROM energy_reserves
+        SELECT EnergyReserves_ID, Monitor_ID, Date, Reserve_Amount
+        FROM _computed_energy_reserves_daily
         WHERE Monitor_ID = ?
-        ${hasRange ? "AND Timestamp >= ? AND Timestamp <= ?" : ""}
-        ORDER BY Timestamp DESC
+        ${hasRange ? "AND Date >= ? AND Date <= ?" : ""}
+        ORDER BY Date DESC
         LIMIT ?
       `;
       const reservesParams = hasRange ? [monitorId, from, to, rowLimit] : [monitorId, rowLimit];
@@ -304,9 +309,9 @@ app.get("/api/monitor/:monitorId/data", (req, res) => {
 
       // solar_panel_data
       const solarSql = `
-        SELECT SolarData_ID, Monitor_ID, Date_Calculated,
+        SELECT Monitor_ID, Date_Calculated,
           Theoretical_Panel_Production, Exact_Panel_Production, Panel_Efficiency, Total_Energy_Generated
-          FROM solar_panel_data
+          FROM _computed_solar_panel_data_daily
           WHERE Monitor_ID = ?
           ORDER BY Date_Calculated DESC
       `;
@@ -318,10 +323,10 @@ app.get("/api/monitor/:monitorId/data", (req, res) => {
         energy_consumption: consumptionRows,
         energy_production: productionRows,
         environmental_data: envRows,
-        energy_reserves: reservesRows,
+        _computed_energy_reserves_daily: reservesRows,
         notifications: notificationsRows,
         sell_request: sellRows,
-        solar_panel_data: solarRows,
+        _computed_solar_panel_data_daily: solarRows,
       });
     } catch (err) {
       console.error("MONITOR DATA DB ERROR:", err);
@@ -332,7 +337,7 @@ app.get("/api/monitor/:monitorId/data", (req, res) => {
 
 app.get("/api/system-logs", (req, res) => {
   db.query(
-    "SELECT Log_ID, User_Email, Details, Datetime FROM system_logs ORDER BY Datetime DESC",
+    "SELECT Log_ID, Actor_Email, Details, Datetime FROM system_logs ORDER BY Datetime DESC",
     (err, data) => {
       if (err) {
         console.log("SYSTEM LOGS DB ERROR:", err);
@@ -356,13 +361,13 @@ function nowMysqlDatetime() {
   return new Date().toISOString().slice(0, 19).replace("T", " ");
 }
 
-async function insertSystemLog(db, actorEmail, detailsObjOrString) {
+async function insertSystemLog(db, req, actorEmail, detailsObjOrString) {
   const details =
     typeof detailsObjOrString === "string"
       ? detailsObjOrString
       : JSON.stringify(detailsObjOrString);
 
-  const q = `INSERT INTO system_logs (User_Email, Details, Datetime) VALUES (?, ?, ?)`;
+  const q = `INSERT INTO system_logs (Actor_Email, Details, Datetime) VALUES (?, ?, ?)`;
 
   return new Promise((resolve, reject) => {
     db.query(q, [actorEmail, details, nowMysqlDatetime()], (err, result) => {

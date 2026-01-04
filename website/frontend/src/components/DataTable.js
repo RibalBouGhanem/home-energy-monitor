@@ -8,20 +8,32 @@ export default function DataTable({
   highlightRow,
   pageSize = 8,
 }) {
-  
-  const cols = Object.keys(rows[0]);
-  
-  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  const safeRows = Array.isArray(rows) ? rows : [];
+
+  const totalPages = Math.max(1, Math.ceil(safeRows.length / pageSize));
   const [page, setPage] = useState(1);
 
   useEffect(() => {
     setPage(1);
-  }, [rows, pageSize]);
+  }, [safeRows, pageSize]);
 
   const pageRows = useMemo(() => {
     const start = (page - 1) * pageSize;
-    return rows.slice(start, start + pageSize);
-  }, [rows, page, pageSize]);
+    return safeRows.slice(start, start + pageSize);
+  }, [safeRows, page, pageSize]);
+
+  if (safeRows.length === 0) {
+    return (
+      <>
+        <h3 style={{ marginBottom: 12 }}>{title}</h3>
+        <div className="admin-table" style={{ padding: 12, opacity: 0.8 }}>
+          No rows found.
+        </div>
+      </>
+    );
+  }
+
+  const cols = Object.keys(safeRows[0]);
 
   const canPrev = page > 1;
   const canNext = page < totalPages;
@@ -29,8 +41,6 @@ export default function DataTable({
   const goPrev = () => setPage((p) => Math.max(1, p - 1));
   const goNext = () => setPage((p) => Math.min(totalPages, p + 1));
 
-  
-  if (!rows || rows.length === 0) return null;
   return (
     <>
       <h3 style={{ marginBottom: 12 }}>{title}</h3>
@@ -49,7 +59,7 @@ export default function DataTable({
               const absoluteIndex = (page - 1) * pageSize + i;
               return (
                 <tr
-                  key={i}
+                  key={`${r.Monitor_ID ?? i}-${r.Date_Calculated ?? i}`}  // better key
                   onMouseEnter={() => onRowHover?.(r, absoluteIndex)}
                   onMouseLeave={() => onRowLeave?.()}
                   style={isHighlighted ? { background: "rgba(255,255,255,0.06)" } : undefined}
@@ -62,24 +72,25 @@ export default function DataTable({
             })}
           </tbody>
         </table>
+
         <div className="datatable-footer">
-          {rows.length > pageSize && (
-              <button
-                type="button"
-                className="secondary-button datatable-arrow"
-                onClick={goPrev}
-                disabled={!canPrev}
-                aria-label="Previous page"
-              >
-                ←
-              </button>
+          {safeRows.length > pageSize && (
+            <button
+              type="button"
+              className="secondary-button datatable-arrow"
+              onClick={goPrev}
+              disabled={!canPrev}
+              aria-label="Previous page"
+            >
+              ←
+            </button>
           )}
 
           <div className="datatable-page">
             Page <strong>{page}</strong> / <span>{totalPages}</span>
           </div>
-          
-          {rows.length > pageSize && (
+
+          {safeRows.length > pageSize && (
             <button
               type="button"
               className="secondary-button datatable-arrow"
@@ -90,7 +101,7 @@ export default function DataTable({
               →
             </button>
           )}
-          </div>
+        </div>
       </div>
     </>
   );

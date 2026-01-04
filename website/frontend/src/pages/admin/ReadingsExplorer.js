@@ -19,6 +19,7 @@ export default function ReadingsExplorer() {
   
   const consumptionChartRef = useRef(null);
   const productionChartRef = useRef(null);
+  const reservesChartRef = useRef(null);
   const environmentalChartRef = useRef(null);
   const solarChartRef = useRef(null);
 
@@ -28,7 +29,9 @@ export default function ReadingsExplorer() {
   const [loadingRows, setLoadingRows] = useState(false);
   const [readingsData, setReadingsData] = useState(null);
   const [tablesChosen, setTablesChosen] = useState([]);
-  const [interval, setInterval] = useState("");
+  const [interval, setInterval] = useState("daily");
+  const [loadedKeys, setLoadedKeys] = useState([]);
+
 
   const intervalOptions = [
     { value: "daily", label: "Daily (aggregated)" },
@@ -42,6 +45,7 @@ export default function ReadingsExplorer() {
 
   const [hoverConsumptionX, setHoverConsumptionX] = useState(null);
   const [hoverProductionX, setHoverProductionX] = useState(null);
+  const [hoverReservesX, setHoverReservesX] = useState(null);
   const [hoverEnvironmentalX, setHoverEnvironmentalX] = useState(null);
   const [hoverSolarX, setHoverSolarX] = useState(null);
 
@@ -61,15 +65,24 @@ export default function ReadingsExplorer() {
 };
 
 
-  const consumptionIndexByTs = useMemo(() => {
+
+const consumptionIndexByTs = useMemo(() => {
+  const map = new Map();
+  (readingsData?.energy_consumption || []).forEach((r, i) => {
+    if (r?.Timestamp) map.set(String(r.Timestamp), i);
+  });
+  return map;
+}, [readingsData]);
+
+  const productionIndexByTs = useMemo(() => {
     const map = new Map();
-    (readingsData?.energy_consumption || []).forEach((r, i) => {
+    (readingsData?.energy_production || []).forEach((r, i) => {
       if (r?.Timestamp) map.set(String(r.Timestamp), i);
     });
     return map;
   }, [readingsData]);
 
-  const productionIndexByTs = useMemo(() => {
+  const reservesIndexByTs = useMemo(() => {
     const map = new Map();
     (readingsData?.energy_production || []).forEach((r, i) => {
       if (r?.Timestamp) map.set(String(r.Timestamp), i);
@@ -84,7 +97,7 @@ export default function ReadingsExplorer() {
     });
     return map;
   }, [readingsData]);
-
+  
   const solarIndexByTs = useMemo(() => {
     const map = new Map();
     (readingsData?._computed_solar_panel_data_daily || []).forEach((r, i) => {
@@ -93,13 +106,16 @@ export default function ReadingsExplorer() {
     return map;
   }, [readingsData]);
   
-  const consumptionYKeys = useMemo(() => ["Consumption_Value"], []);
-  const productionYKeys = useMemo(() => ["Production_Value"], []);
-  const envYKeys = useMemo(() => ["Temperature", "Humidity", "Light_Intensity"], []);
-  const solarYKeys = useMemo(() => ["Theoretical_Panel_Production",	"Exact_Panel_Production", "Panel_Efficiency",	"Total_Energy_Generated"], []);
+  const consumptionYKeys = useMemo(() => ["Total_Consumption"], []);
+  const productionYKeys = useMemo(() => ["Total_Production"], []);
+  const reservesYKeys = useMemo(() => ["Reserve_Amount"], []);
+  const avgReservesYKeys = useMemo(() => ["Avg_Reserve_Amount"], []);
+  const envYKeys = useMemo(() => ["Avg_Temperature", "Avg_Humidity", "Avg_Light_Intensity"], []);
+  const solarYKeys = useMemo(() => ["Theoretical_Panel_Production",	"Avg_Exact_Panel_Production", "Avg_Panel_Efficiency",	"Total_Energy_Generated"], []);
   
-  const consumptionLabels = useMemo(() => ({Consumption_Value: "Consumption"}), []);
-  const productionLabels = useMemo(() => ({ Production_Value: "Production" }), []);
+  const consumptionLabels = useMemo(() => ({Total_Consumption: "Consumption"}), []);
+  const productionLabels = useMemo(() => ({ Total_Production: "Production" }), []);
+  const reservesLabels = useMemo(() => ({ Reserve_Amount: "Rserve" }), []);
   const envLabels = useMemo(() => ({
     Temperature: "Temperature",
     Humidity: "Humidity",
@@ -111,7 +127,199 @@ export default function ReadingsExplorer() {
     Panel_Efficiency: "Panel Efficiency",
     Total_Energy_Generated: "Total Energy Generated",
   }),[]);
+  
+  const TABLES = useMemo(() => ({
+    _computed_energy_consumption_daily: {
+      title: "Energy Consumption",
+      chartTitle: "Consumption",
+      xKey: "Timestamp",
+      yKeys: consumptionYKeys,
+      labels: consumptionLabels,
+      chartRef: consumptionChartRef,
+      getHoverX: () => hoverConsumptionX,
+      setHoverX: setHoverConsumptionX,
+      indexByX: consumptionIndexByTs, // Map(xString -> index)
+      xToComparable: (v) => new Date(v).getTime(),
+    },
+    _computed_energy_consumption_monthly: {
+      title: "Energy Consumption",
+      chartTitle: "Consumption",
+      xKey: "Timestamp",
+      yKeys: consumptionYKeys,
+      labels: consumptionLabels,
+      chartRef: consumptionChartRef,
+      getHoverX: () => hoverConsumptionX,
+      setHoverX: setHoverConsumptionX,
+      indexByX: consumptionIndexByTs, // Map(xString -> index)
+      xToComparable: (v) => new Date(v).getTime(),
+    },
+    _computed_energy_consumption_yearly: {
+      title: "Energy Consumption",
+      chartTitle: "Consumption",
+      xKey: "Timestamp",
+      yKeys: consumptionYKeys,
+      labels: consumptionLabels,
+      chartRef: consumptionChartRef,
+      getHoverX: () => hoverConsumptionX,
+      setHoverX: setHoverConsumptionX,
+      indexByX: consumptionIndexByTs, // Map(xString -> index)
+      xToComparable: (v) => new Date(v).getTime(),
+    },
+  
+    _computed_energy_production_daily: {
+      title: "Energy Production",
+      chartTitle: "Production",
+      xKey: "Timestamp",
+      yKeys: productionYKeys,
+      labels: productionLabels,
+      chartRef: productionChartRef,
+      getHoverX: () => hoverProductionX,
+      setHoverX: setHoverProductionX,
+      indexByX: productionIndexByTs,
+      xToComparable: (v) => new Date(v).getTime(),
+    },
+    _computed_energy_production_monthly: {
+      title: "Energy Production",
+      chartTitle: "Production",
+      xKey: "Timestamp",
+      yKeys: productionYKeys,
+      labels: productionLabels,
+      chartRef: productionChartRef,
+      getHoverX: () => hoverProductionX,
+      setHoverX: setHoverProductionX,
+      indexByX: productionIndexByTs,
+      xToComparable: (v) => new Date(v).getTime(),
+    },
+    _computed_energy_production_yearly: {
+      title: "Energy Production",
+      chartTitle: "Production",
+      xKey: "Timestamp",
+      yKeys: productionYKeys,
+      labels: productionLabels,
+      chartRef: productionChartRef,
+      getHoverX: () => hoverProductionX,
+      setHoverX: setHoverProductionX,
+      indexByX: productionIndexByTs,
+      xToComparable: (v) => new Date(v).getTime(),
+    },
+  
+    _computed_energy_reserves_daily: {
+      title: "Energy Reserves",
+      chartTitle: "Reserves",
+      xKey: "Timestamp",
+      yKeys: reservesYKeys,
+      labels: reservesLabels,
+      chartRef: reservesChartRef,
+      getHoverX: () => hoverReservesX,
+      setHoverX: setHoverReservesX,
+      indexByX: reservesIndexByTs,
+      xToComparable: (v) => new Date(v).getTime(),
+    },
+    _computed_energy_reserves_monthly: {
+      title: "Energy Reserves",
+      chartTitle: "Reserves",
+      xKey: "Timestamp",
+      yKeys: avgReservesYKeys,
+      labels: reservesLabels,
+      chartRef: reservesChartRef,
+      getHoverX: () => hoverReservesX,
+      setHoverX: setHoverReservesX,
+      indexByX: reservesIndexByTs,
+      xToComparable: (v) => new Date(v).getTime(),
+    },
+    _computed_energy_reserves_yearly: {
+      title: "Energy Reserves",
+      chartTitle: "Reserves",
+      xKey: "Timestamp",
+      yKeys: avgReservesYKeys,
+      labels: reservesLabels,
+      chartRef: reservesChartRef,
+      getHoverX: () => hoverReservesX,
+      setHoverX: setHoverReservesX,
+      indexByX: reservesIndexByTs,
+      xToComparable: (v) => new Date(v).getTime(),
+    },
     
+    _computed_environmental_data_daily: {
+      title: "Environmental Data",
+      chartTitle: "Environmental Data",
+      xKey: "Timestamp",
+      yKeys: envYKeys,
+      labels: envLabels,
+      chartRef: environmentalChartRef,
+      getHoverX: () => hoverEnvironmentalX,
+      setHoverX: setHoverEnvironmentalX,
+      indexByX: environmentalIndexByTs,
+      xToComparable: (v) => new Date(v).getTime(),
+    },
+    _computed_environmental_data_monthly: {
+      title: "Environmental Data",
+      chartTitle: "Environmental Data",
+      xKey: "Timestamp",
+      yKeys: envYKeys,
+      labels: envLabels,
+      chartRef: environmentalChartRef,
+      getHoverX: () => hoverEnvironmentalX,
+      setHoverX: setHoverEnvironmentalX,
+      indexByX: environmentalIndexByTs,
+      xToComparable: (v) => new Date(v).getTime(),
+    },
+    _computed_environmental_data_yearly: {
+      title: "Environmental Data",
+      chartTitle: "Environmental Data",
+      xKey: "Timestamp",
+      yKeys: envYKeys,
+      labels: envLabels,
+      chartRef: environmentalChartRef,
+      getHoverX: () => hoverEnvironmentalX,
+      setHoverX: setHoverEnvironmentalX,
+      indexByX: environmentalIndexByTs,
+      xToComparable: (v) => new Date(v).getTime(),
+    },
+    
+    _computed_solar_panel_data_daily: {
+      title: "Solar Panels Data",
+      chartTitle: "Solar Panels Data",
+      xKey: "Timestamp",
+      yKeys: solarYKeys,
+      labels: solarLabels,
+      chartRef: solarChartRef,
+      getHoverX: () => hoverSolarX,
+      setHoverX: setHoverSolarX,
+      indexByX: solarIndexByTs, // your solarIndexByTs uses Date_Calculated
+      xToComparable: (v) => new Date(v).getTime(), // safer than getDate()
+    },
+    _computed_solar_panel_data_monthly: {
+      title: "Solar Panels Data",
+      chartTitle: "Solar Panels Data",
+      xKey: "Timestamp",
+      yKeys: solarYKeys,
+      labels: solarLabels,
+      chartRef: solarChartRef,
+      getHoverX: () => hoverSolarX,
+      setHoverX: setHoverSolarX,
+      indexByX: solarIndexByTs, // your solarIndexByTs uses Date_Calculated
+      xToComparable: (v) => new Date(v).getTime(), // safer than getDate()
+    },
+    _computed_solar_panel_data_yearly: {
+      title: "Solar Panels Data",
+      chartTitle: "Solar Panels Data",
+      xKey: "Timestamp",
+      yKeys: solarYKeys,
+      labels: solarLabels,
+      chartRef: solarChartRef,
+      getHoverX: () => hoverSolarX,
+      setHoverX: setHoverSolarX,
+      indexByX: solarIndexByTs, // your solarIndexByTs uses Date_Calculated
+      xToComparable: (v) => new Date(v).getTime(), // safer than getDate()
+    },
+  }), [
+    consumptionYKeys, consumptionLabels, consumptionIndexByTs, hoverConsumptionX,
+    productionYKeys, productionLabels, productionIndexByTs, hoverProductionX,
+    envYKeys, envLabels, environmentalIndexByTs, hoverEnvironmentalX,
+    solarYKeys, solarLabels, solarIndexByTs, hoverSolarX,
+  ]);
+
   const lastLoaded = useMemo(() => {
     const loadTime = new Date().getTime();
     console.log("Readings data changed at", new Date(loadTime).toLocaleString());
@@ -146,20 +354,17 @@ export default function ReadingsExplorer() {
       if (from) params.set("from", from);
       if (to) params.set("to", to);
 
-      const resolvedTables = (tablesChosen || []).map((t) => resolveTableByInterval(t, interval));
-      if (resolvedTables.length) params.set("tables", [...new Set(resolvedTables)].join(","));
+    const resolvedTables = (tablesChosen || [])
+      .map((t) => (typeof t === "string" ? t : t?.value))
+      .filter(Boolean)
+      .map((t) => resolveTableByInterval(t, interval));
+      
+      setLoadedKeys([...new Set(resolvedTables)]);
       
       const res = await api.get(`/api/monitor/${monitorId}/data?${params.toString()}`);
       
-      // FRONTEND prune: keep only selected tables
-      const selected = new Set(resolvedTables);
-      const pruned = {};
+    setReadingsData(res.data);
 
-      selected.forEach((k) => {
-        pruned[k] = res.data?.[k] ?? [];
-      });
-
-      setReadingsData(pruned);
     } catch (e) {
       console.log("FETCH MONITOR DATA ERROR:", e);
       setErr(e?.response?.data?.message || "Failed to load monitor data.");
@@ -208,24 +413,14 @@ export default function ReadingsExplorer() {
           >
             Load
           </button>
-          {readingsData?.energy_consumption && 
+          {readingsData && 
             <button
               type="button"
               className="secondary-button"
               disabled={!readingsData}
               onClick={() => {
-                const tables = [
-                  ["monitors", readingsData.monitors],
-                  ["energy_consumption", readingsData.energy_consumption],
-                  ["energy_production", readingsData.energy_production],
-                  ["environmental_data", readingsData.environmental_data],
-                  ["energy_reserves", readingsData.energy_reserves],
-                  ["notifications", readingsData.notifications],
-                  ["sell_request", readingsData.sell_request],
-                  ["_computed_solar_panel_data_daily", readingsData._computed_solar_panel_data_daily],
-                ];
                 const prefix = `monitor_${monitorId}`;
-                tables.forEach(([name, rows]) => { if (Array.isArray(rows) && rows.length > 0) exportRowsToCsv(`${prefix}_${name}.csv`, rows);});
+                tablesChosen.forEach(([name, rows]) => { if (Array.isArray(rows) && rows.length > 0) exportRowsToCsv(`${prefix}_${name}.csv`, rows);});
               }}
             >
               Export CSV
@@ -244,7 +439,7 @@ export default function ReadingsExplorer() {
             placeholder={loadingMonitors ? "Loading..." : "Select monitor..."}
             allowAll={false}
           />
-          <SearchableSelect
+          {/* <SearchableSelect
             label="Reading Type"
             value={tablesChosen}
             onChange={setTablesChosen}
@@ -253,7 +448,7 @@ export default function ReadingsExplorer() {
             allowAll={false}
             searchable={false}
             multiple
-          />
+          /> */}
           <SearchableSelect
             label="Interval"
             value={interval}
@@ -276,144 +471,52 @@ export default function ReadingsExplorer() {
 
       {err && <div className="admin-error">{err}</div>}
       
-        <div className="readings-rows">
-          {readingsData?._computed_energy_consumption_daily && (
-            <div className="readings-row">
+      <div className="readings-rows">
+        {Object.entries(readingsData || {}).map(([key, rows]) => {
+          const cfg = TABLES[key];
+          if (!cfg) return null;                 // unknown table key
+          if (!Array.isArray(rows) || !rows.length) return null;
+          const indexByX = new Map();
+          rows.forEach((r, i) => indexByX.set(String(r?.[cfg.xKey]), i));
+          
+          return (
+            <div className="readings-row" key={key}>
               <div className="readings-table">
                 <DataTable
-                  title="Energy Consumption"
-                  rows={readingsData.energy_consumption} 
+                  title={cfg.title}
+                  rows={rows}
                   onRowHover={(row) => {
-                    const idx = consumptionIndexByTs.get(String(row.Timestamp));
-                    highlightPoint(consumptionChartRef.current, idx);
+                    const xVal = row?.[cfg.xKey];
+                    const idx = indexByX.get(String(xVal));
+                    highlightPoint(cfg.chartRef.current, idx);
                   }}
-                  onRowLeave={() => clearHighlight(consumptionChartRef.current)}
+                  onRowLeave={() => clearHighlight(cfg.chartRef.current)}
                   highlightRow={(row) => {
-                    const a = toMs(row.Timestamp);
-                    const b = Number(hoverConsumptionX);
-                    return a != null && b != null && a === b;
-                  }}
-                />
-              </div>
-              <div className="readings-chart">
-                <ChartCard title="Consumption">
-                  <LineTimeChart
-                    id="consumptionChart"
-                    rows={readingsData.energy_consumption}
-                    xKey="Timestamp"
-                    yKeys={consumptionYKeys}
-                    labels={consumptionLabels}
-                    chartRef={consumptionChartRef}
-                    onHoverX={(x) => setHoverConsumptionX(x)}
-                  />
-                </ChartCard>
-              </div>
-          </div>
-          )}
-
-          {readingsData?.energy_production && (
-            <div className="readings-row">
-              <div className="readings-table">
-                <DataTable
-                  title="Energy Production"
-                  rows={readingsData.energy_production} 
-                  onRowHover={(row) => {
-                    const idx = productionIndexByTs.get(String(row.Timestamp));
-                    highlightPoint(productionChartRef.current, idx);
-                  }}
-                  onRowLeave={() => clearHighlight(productionChartRef.current)}
-                  highlightRow={(row) => {
-                    const a = toMs(row.Timestamp);
-                    const b = Number(hoverProductionX);
+                    const a = cfg.xToComparable(row?.[cfg.xKey]);
+                    const b = Number(cfg.getHoverX());
                     return a != null && b != null && a === b;
                   }}
                   pageSize={8}
                 />
               </div>
-              <div className="readings-chart">
-                <ChartCard title="Production">
-                  <LineTimeChart
-                    id="productionChart"
-                    rows={readingsData.energy_production}
-                    xKey="Timestamp"
-                    yKeys={productionYKeys}
-                    labels={productionLabels}
-                    chartRef={productionChartRef}
-                    onHoverX={(x) => setHoverProductionX(x)}
-                  />
-                </ChartCard>
-              </div>
-            </div>
-          )}
 
-          {readingsData?.environmental_data && (
-            <div className="readings-row">
-              <div className="readings-table">
-                <DataTable
-                  title="Environmental Data"
-                  rows={readingsData.environmental_data} 
-                  onRowHover={(row) => {
-                    const idx = environmentalIndexByTs.get(String(row.Timestamp));
-                    highlightPoint(environmentalChartRef.current, idx);
-                  }}
-                  onRowLeave={() => clearHighlight(environmentalChartRef.current)}
-                  highlightRow={(row) => {
-                    const a = toMs(row.Timestamp);
-                    const b = Number(hoverEnvironmentalX);
-                    return a != null && b != null && a === b;
-                  }}
-                />
-              </div>
               <div className="readings-chart">
-                <ChartCard title="Environmental Data">
+                <ChartCard title={cfg.chartTitle}>
                   <LineTimeChart
-                    id="environmentalChart"
-                    rows={readingsData.environmental_data}
-                    xKey="Timestamp"
-                    yKeys={envYKeys}
-                    labels={envLabels}
-                    chartRef={environmentalChartRef}
-                    onHoverX={(x) => setHoverEnvironmentalX(x)}
+                    id={`${key}-chart`}
+                    rows={rows}
+                    xKey={cfg.xKey}
+                    yKeys={cfg.yKeys}
+                    labels={cfg.labels}
+                    chartRef={cfg.chartRef}
+                    onHoverX={(x) => cfg.setHoverX(x)}
                   />
                 </ChartCard>
               </div>
             </div>
-          )}
-
-          {readingsData?._computed_solar_panel_data_daily && (
-            <div className="readings-row">
-              <div className="readings-table">
-                <DataTable
-                  title="Solar Panels Data"
-                  rows={readingsData._computed_solar_panel_data_daily} 
-                  onRowHover={(row) => {
-                    const idx = solarIndexByTs.get(String(row.Date_Calculated));
-                    highlightPoint(solarChartRef.current, idx);
-                  }}
-                  onRowLeave={() => clearHighlight(solarChartRef.current)}
-                  highlightRow={(row) => {
-                    const a = toDate(row.Date_Calculated);
-                    const b = Number(hoverSolarX);
-                    return a != null && b != null && a === b;
-                  }}
-                />
-              </div>
-              <div className="readings-chart">
-                <ChartCard title="Solar Panels Data">
-                  <LineTimeChart
-                    id="solarPanelsChart"
-                    rows={readingsData._computed_solar_panel_data_daily}
-                    xKey="Date_Calculated"
-                    yKeys={solarYKeys}
-                    labels={solarLabels}
-                    chartRef={solarChartRef}
-                    onHoverX={(x) => setHoverSolarX(x)}
-                  />
-                </ChartCard>
-              </div>
-            </div>
-          )}
-        </div>
+          );
+        })}
+      </div>
 
       <div className="readings-note">
         If your backend returns different column names, map them in the table body.

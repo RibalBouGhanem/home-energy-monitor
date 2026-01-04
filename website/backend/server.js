@@ -233,25 +233,25 @@ app.get("/api/monitor/:monitorId/data", (req, res) => {
       // energy_consumption
       const consumptionParams = hasRange ? [monitorId, from, to] : [monitorId];
       const consumptionDSql = `
-        SELECT Date, Total_Consumption
+        SELECT Date AS Timestamp, Total_Consumption
         FROM _computed_energy_consumption_daily
         WHERE Monitor_ID = ?
-        ${hasRange ? "AND Date >= ? AND Date <= ?" : ""}
-        ORDER BY Date DESC
+        ${hasRange ? "AND Timestamp >= ? AND Timestamp <= ?" : ""}
+        ORDER BY Timestamp DESC
       `;
       const consumptionMSql = `
-        SELECT STR_TO_DATE(CONCAT(Year,'-',LPAD(Month,2,'0'),'-01'), '%Y-%m-%d') AS Date, Total_Consumption
+        SELECT STR_TO_DATE(CONCAT(Year,'-',LPAD(Month,2,'0'),'-01'), '%Y-%m-%d') AS Timestamp, Total_Consumption
         FROM _computed_energy_consumption_monthly
         WHERE Monitor_ID = ?
-        ${hasRange ? "AND MONTH(Date) >= MONTH(?) AND MONTH(Date) <= MONTH(?) AND YEAR(Date) >= YEAR(?) AND YEAR(Date) <= YEAR(?)" : ""}
-        ORDER BY Year DESC, Month DESC
+        ${hasRange ? "AND MONTH(Timestamp) >= MONTH(?) AND MONTH(Timestamp) <= MONTH(?) AND YEAR(Timestamp) >= YEAR(?) AND YEAR(Timestamp) <= YEAR(?)" : ""}
+        ORDER BY Timestamp DESC
       `;
       const consumptionYSql = `
-        SELECT Year, Total_Consumption
+        SELECT Year AS Timestamp, Total_Consumption
         FROM _computed_energy_consumption_yearly
         WHERE Monitor_ID = ?
-        ${hasRange ? "AND Year >= YEAR(?) AND Year <= YEAR(?)" : ""}
-        ORDER BY Year DESC
+        ${hasRange ? "AND Timestamp >= YEAR(?) AND Timestamp <= YEAR(?)" : ""}
+        ORDER BY Timestamp DESC
       `;
       const consumptionDRows = await run(consumptionDSql, consumptionParams);
       const consumptionMRows = await run(consumptionMSql, consumptionParams);
@@ -260,25 +260,25 @@ app.get("/api/monitor/:monitorId/data", (req, res) => {
       // energy_production
       const productionParams = hasRange ? [monitorId, from, to] : [monitorId];
       const productionDSql = `
-        SELECT Date, Total_Production
+        SELECT Date AS Timestamp, Total_Production
         FROM _computed_energy_production_daily
         WHERE Monitor_ID = ?
-        ${hasRange ? "AND Date >= ? AND Date <= ?" : ""}
-        ORDER BY Date DESC
+        ${hasRange ? "AND Timestamp >= ? AND Timestamp <= ?" : ""}
+        ORDER BY Timestamp DESC
       `;
       const productionMSql = `
-        SELECT STR_TO_DATE(CONCAT(Year,'-',LPAD(Month,2,'0'),'-01'), '%Y-%m-%d') AS Date, Total_Production
+        SELECT STR_TO_DATE(CONCAT(Year,'-',LPAD(Month,2,'0'),'-01'), '%Y-%m-%d') AS Timestamp, Total_Production
         FROM _computed_energy_production_monthly
         WHERE Monitor_ID = ?
-        ${hasRange ? "AND MONTH(Date) >= MONTH(?) AND MONTH(Date) <= MONTH(?) AND YEAR(Date) >= YEAR(?) AND YEAR(Date) <= YEAR(?)" : ""}
-        ORDER BY Year, Month DESC
+        ${hasRange ? "AND MONTH(Timestamp) >= MONTH(?) AND MONTH(Timestamp) <= MONTH(?) AND YEAR(Timestamp) >= YEAR(?) AND YEAR(Timestamp) <= YEAR(?)" : ""}
+        ORDER BY Timestamp DESC
       `;
       const productionYSql = `
-        SELECT Year, Total_Production
+        SELECT Year AS Timestamp, Total_Production
         FROM _computed_energy_production_yearly
         WHERE Monitor_ID = ?
-        ${hasRange ? "AND Year >= YEAR(?) AND Year <= YEAR(?)" : ""}
-        ORDER BY Year DESC
+        ${hasRange ? "AND Timestamp >= YEAR(?) AND Timestamp <= YEAR(?)" : ""}
+        ORDER BY Timestamp DESC
       `;
       const productionDRows = await run(productionDSql, productionParams);
       const productionMRows = await run(productionMSql, productionParams);
@@ -287,25 +287,25 @@ app.get("/api/monitor/:monitorId/data", (req, res) => {
       // environmental_data
       const envParams = hasRange ? [monitorId, from, to] : [monitorId];
       const envDSql = `
-        SELECT Date, Avg_Light_Intensity, Avg_Temperature, Avg_Humidity
+        SELECT Date AS Timestamp, Avg_Light_Intensity, Avg_Temperature, Avg_Humidity
         FROM _computed_environmental_data_daily
         WHERE Monitor_ID = ?
-        ${hasRange ? "AND Date >= ? AND Date <= ?" : ""}
-        ORDER BY Date DESC
+        ${hasRange ? "AND Timestamp >= ? AND Timestamp <= ?" : ""}
+        ORDER BY Timestamp DESC
       `;
       const envMSql = `
-        SELECT STR_TO_DATE(CONCAT(Year,'-',LPAD(Month,2,'0'),'-01'), '%Y-%m-%d') AS Date, Avg_Light_Intensity, Avg_Temperature, Avg_Humidity
+        SELECT STR_TO_DATE(CONCAT(Year,'-',LPAD(Month,2,'0'),'-01'), '%Y-%m-%d') AS Timestamp, Avg_Light_Intensity, Avg_Temperature, Avg_Humidity
         FROM _computed_environmental_data_monthly
         WHERE Monitor_ID = ?
-        ${hasRange ? "AND MONTH(Date) >= MONTH(?) AND MONTH(Date) <= MONTH(?) AND YEAR(Date) >= YEAR(?) AND YEAR(Date) <= YEAR(?)" : ""}
-        ORDER BY Date DESC
+        ${hasRange ? "AND MONTH(Timestamp) >= MONTH(?) AND MONTH(Timestamp) <= MONTH(?) AND YEAR(Timestamp) >= YEAR(?) AND YEAR(Timestamp) <= YEAR(?)" : ""}
+        ORDER BY Timestamp DESC
       `;
       const envYSql = `
-        SELECT Year, Avg_Light_Intensity, Avg_Temperature, Avg_Humidity
+        SELECT Year AS Timestamp, Avg_Light_Intensity, Avg_Temperature, Avg_Humidity
         FROM _computed_environmental_data_yearly
         WHERE Monitor_ID = ?
-        ${hasRange ? "AND Year >= YEAR(?) AND Year <= YEAR(?)" : ""}
-        ORDER BY Year DESC
+        ${hasRange ? "AND Timestamp >= YEAR(?) AND Timestamp <= YEAR(?)" : ""}
+        ORDER BY Timestamp DESC
       `;
       const envDRows = await run(envDSql, envParams);
       const envMRows = await run(envMSql, envParams);
@@ -314,25 +314,25 @@ app.get("/api/monitor/:monitorId/data", (req, res) => {
       // energy_reserves
       const reservesParams = hasRange ? [monitorId, from, to] : [monitorId];
       const reservesDSql = `
-        SELECT Date, Reserve_Amount
+        SELECT Date AS Timestamp, Reserve_Amount
         FROM _computed_energy_reserves_daily
         WHERE Monitor_ID = ?
-        ${hasRange ? "AND Date >= ? AND Date <= ?" : ""}
-        ORDER BY Date DESC
+        ${hasRange ? "AND Timestamp >= ? AND Timestamp <= ?" : ""}
+        ORDER BY Timestamp DESC
       `;
       const reservesMSql = `
-        SELECT STR_TO_DATE(CONCAT(Year,'-',LPAD(Month,2,'0'),'-01'), '%Y-%m-%d') AS Date, Avg_Reserve_Amount
+        SELECT STR_TO_DATE(CONCAT(Year,'-',LPAD(Month,2,'0'),'-01'), '%Y-%m-%d') AS Timestamp, Avg_Reserve_Amount
         FROM _computed_energy_reserves_monthly
         WHERE Monitor_ID = ?
-        ${hasRange ? "AND MONTH(Date) >= MONTH(?) AND MONTH(Date) <= MONTH(?) AND YEAR(Date) >= YEAR(?) AND YEAR(Date) <= YEAR(?)" : ""}
-        ORDER BY Date DESC
+        ${hasRange ? "AND MONTH(Timestamp) >= MONTH(?) AND MONTH(Timestamp) <= MONTH(?) AND YEAR(Timestamp) >= YEAR(?) AND YEAR(Timestamp) <= YEAR(?)" : ""}
+        ORDER BY Timestamp DESC
       `;
       const reservesYSql = `
-        SELECT Year, Avg_Reserve_Amount
+        SELECT Year AS Timestamp, Avg_Reserve_Amount
         FROM _computed_energy_reserves_yearly
         WHERE Monitor_ID = ?
-        ${hasRange ? "AND Year >= YEAR(?) AND Year <= YEAR(?)" : ""}
-        ORDER BY Year DESC
+        ${hasRange ? "AND Timestamp >= YEAR(?) AND Timestamp <= YEAR(?)" : ""}
+        ORDER BY Timestamp DESC
       `;
       const reservesDRows = await run(reservesDSql, reservesParams);
       const reservesMRows = await run(reservesMSql, reservesParams);
@@ -359,25 +359,25 @@ app.get("/api/monitor/:monitorId/data", (req, res) => {
       // solar_panel_data
       const solarParams = hasRange ? [monitorId, from, to] : [monitorId];
       const solarDSql = `
-        SELECT Date_Calculated, Theoretical_Panel_Production, Exact_Panel_Production, Panel_Efficiency, Total_Energy_Generated
+        SELECT Date_Calculated AS Timestamp, Theoretical_Panel_Production, Exact_Panel_Production, Panel_Efficiency, Total_Energy_Generated
           FROM _computed_solar_panel_data_daily
           WHERE Monitor_ID = ?
-          ${hasRange ? "AND Date_Calculated >= ? AND Date_Calculated <= ?" : ""}
-          ORDER BY Date_Calculated DESC
+          ${hasRange ? "AND Timestamp >= ? AND Timestamp <= ?" : ""}
+          ORDER BY Timestamp DESC
       `;
       const solarMSql = `
-        SELECT STR_TO_DATE(CONCAT(Year,'-',LPAD(Month,2,'0'),'-01'), '%Y-%m-%d') AS Date, Theoretical_Panel_Production, Avg_Exact_Panel_Production, Avg_Panel_Efficiency, Total_Energy_Generated
+        SELECT STR_TO_DATE(CONCAT(Year,'-',LPAD(Month,2,'0'),'-01'), '%Y-%m-%d') AS Timestamp, Theoretical_Panel_Production, Avg_Exact_Panel_Production, Avg_Panel_Efficiency, Total_Energy_Generated
           FROM _computed_solar_panel_data_monthly
           WHERE Monitor_ID = ?
-        ${hasRange ? "AND MONTH(Date) >= MONTH(?) AND MONTH(Date) <= MONTH(?) AND YEAR(Date) >= YEAR(?) AND YEAR(Date) <= YEAR(?)" : ""}
-          ORDER BY Date DESC
+        ${hasRange ? "AND MONTH(Timestamp) >= MONTH(?) AND MONTH(Timestamp) <= MONTH(?) AND YEAR(Timestamp) >= YEAR(?) AND YEAR(Timestamp) <= YEAR(?)" : ""}
+          ORDER BY Timestamp DESC
       `;
       const solarYSql = `
-        SELECT Year, Theoretical_Panel_Production, Avg_Exact_Panel_Production, Avg_Panel_Efficiency, Total_Energy_Generated
+        SELECT Year AS Timestamp, Theoretical_Panel_Production, Avg_Exact_Panel_Production, Avg_Panel_Efficiency, Total_Energy_Generated
           FROM _computed_solar_panel_data_yearly
           WHERE Monitor_ID = ?
-        ${hasRange ? "AND Year >= YEAR(?) AND Year <= YEAR(?)" : ""}
-          ORDER BY Year DESC
+        ${hasRange ? "AND Timestamp >= YEAR(?) AND Timestamp <= YEAR(?)" : ""}
+          ORDER BY Timestamp DESC
       `;
       const solarDRows = await run(solarDSql, solarParams);
       const solarMRows = await run(solarMSql, solarParams);

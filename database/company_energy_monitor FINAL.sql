@@ -1,0 +1,2299 @@
+-- phpMyAdmin SQL Dump
+-- version 5.2.1
+-- https://www.phpmyadmin.net/
+--
+-- Host: 127.0.0.1
+-- Generation Time: Jan 05, 2026 at 01:09 AM
+-- Server version: 10.4.32-MariaDB
+-- PHP Version: 8.2.12
+
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+START TRANSACTION;
+SET time_zone = "+00:00";
+
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+
+--
+-- Database: `company_energy_monitor`
+--
+
+DELIMITER $$
+--
+-- Procedures
+--
+CREATE DEFINER=`root`@`localhost` PROCEDURE `compute_consumption_daily` (IN `p_date` DATE)   BEGIN
+  INSERT INTO _computed_energy_consumption_daily (Monitor_ID, `Date`, Total_Consumption)
+  SELECT
+    t.Monitor_ID,
+    p_date AS `Date`,
+    COALESCE(SUM(t.power_w * (t.dt_seconds / 3600)), 0) AS Total_Consumption
+  FROM (
+    SELECT
+      ec.Monitor_ID,
+      ec.Consumption_Value AS power_w,
+      GREATEST(
+        0,
+        TIMESTAMPDIFF(
+          SECOND,
+          ec.`Timestamp`,
+          LEAST(
+            COALESCE(
+              LEAD(ec.`Timestamp`) OVER (PARTITION BY ec.Monitor_ID ORDER BY ec.`Timestamp`),
+              TIMESTAMP(DATE_ADD(p_date, INTERVAL 1 DAY))
+            ),
+            TIMESTAMP(DATE_ADD(p_date, INTERVAL 1 DAY))
+          )
+        )
+      ) AS dt_seconds
+    FROM energy_consumption ec
+    WHERE ec.`Timestamp` >= TIMESTAMP(p_date)
+      AND ec.`Timestamp` <  TIMESTAMP(DATE_ADD(p_date, INTERVAL 1 DAY))
+  ) t
+  GROUP BY t.Monitor_ID
+  ON DUPLICATE KEY UPDATE
+    Total_Consumption = VALUES(Total_Consumption);
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `compute_consumption_monthly` (IN `p_year` INT, IN `p_month` INT)   BEGIN
+  INSERT INTO _computed_energy_consumption_monthly
+    (Monitor_ID, Year, Month, Total_Consumption)
+  SELECT
+    cecd.Monitor_ID,
+    YEAR(cecd.Date),
+    MONTH(cecd.Date),
+    COALESCE(SUM(cecd.Total_Consumption), 0) AS Total_Consumption
+  FROM _computed_energy_consumption_daily cecd
+  WHERE YEAR(cecd.Date) = p_year
+    AND MONTH(cecd.Date) = p_month
+  GROUP BY cecd.Monitor_ID, YEAR(cecd.Date), MONTH(cecd.Date)
+  ON DUPLICATE KEY UPDATE
+    Total_Consumption = VALUES(Total_Consumption);
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `compute_consumption_yearly` (IN `p_year` INT)   BEGIN
+  INSERT INTO _computed_energy_consumption_yearly
+    (Monitor_ID, Year, Total_Consumption)
+  SELECT
+    cecm.Monitor_ID,
+    YEAR(cecm.Year) AS Year,
+    COALESCE(SUM(cecm.Total_Consumption), 0) AS Total_Consumption
+  FROM _computed_energy_consumption_monthly cecm
+  WHERE YEAR(cecm.Year) = p_year
+  GROUP BY cecm.Monitor_ID, YEAR(cecm.Year)
+  ON DUPLICATE KEY UPDATE
+    Total_Consumption = VALUES(Total_Consumption);
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `compute_environmental_monthly` (IN `p_month` INT, IN `p_year` INT)   BEGIN
+  INSERT INTO _computed_environmental_data_monthly (
+    Monitor_ID,
+    Month,
+    Year,
+    Avg_Light_Intensity,
+    Avg_Temperature,
+    Avg_Humidity
+  )
+  SELECT
+    edd.Monitor_ID,
+    p_month AS Month,
+    p_year  AS Year,
+    COALESCE(AVG(edd.Avg_Light_Intensity), 0) AS Avg_Light_Intensity,
+    COALESCE(AVG(edd.Avg_Temperature), 0)     AS Avg_Temperature,
+    COALESCE(AVG(edd.Avg_Humidity), 0)        AS Avg_Humidity
+  FROM _computed_environmental_data_daily edd
+  WHERE MONTH(edd.Date) = p_month
+    AND YEAR(edd.Date)  = p_year
+  GROUP BY edd.Monitor_ID
+  ON DUPLICATE KEY UPDATE
+    Avg_Light_Intensity = VALUES(Avg_Light_Intensity),
+    Avg_Temperature     = VALUES(Avg_Temperature),
+    Avg_Humidity        = VALUES(Avg_Humidity);
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `compute_environmental_yearly` (IN `p_year` INT)   BEGIN
+  INSERT INTO _computed_environmental_data_yearly (
+    Monitor_ID,
+    Year,
+    Avg_Light_Intensity,
+    Avg_Temperature,
+    Avg_Humidity
+  )
+  SELECT
+    edd.Monitor_ID,
+    p_year AS Year,
+    COALESCE(AVG(edd.Avg_Light_Intensity), 0) AS Avg_Light_Intensity,
+    COALESCE(AVG(edd.Avg_Temperature), 0)     AS Avg_Temperature,
+    COALESCE(AVG(edd.Avg_Humidity), 0)        AS Avg_Humidity
+  FROM _computed_environmental_data_daily edd
+  WHERE YEAR(edd.Date) = p_year
+  GROUP BY edd.Monitor_ID
+  ON DUPLICATE KEY UPDATE
+    Avg_Light_Intensity = VALUES(Avg_Light_Intensity),
+    Avg_Temperature     = VALUES(Avg_Temperature),
+    Avg_Humidity        = VALUES(Avg_Humidity);
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `compute_production_daily` (IN `p_date` DATE)   BEGIN
+  INSERT INTO _computed_energy_production_daily (Monitor_ID, `Date`, Total_Production)
+  SELECT
+    t.Monitor_ID,
+    p_date AS `Date`,
+    COALESCE(SUM(t.power_w * (t.dt_seconds / 3600)), 0) AS Total_Production
+  FROM (
+    SELECT
+      ep.Monitor_ID,
+      ep.Production_Value AS power_w,
+      GREATEST(
+        0,
+        TIMESTAMPDIFF(
+          SECOND,
+          ep.`Timestamp`,
+          LEAST(
+            COALESCE(
+              LEAD(ep.`Timestamp`) OVER (PARTITION BY ep.Monitor_ID ORDER BY ep.`Timestamp`),
+              TIMESTAMP(DATE_ADD(p_date, INTERVAL 1 DAY))
+            ),
+            TIMESTAMP(DATE_ADD(p_date, INTERVAL 1 DAY))
+          )
+        )
+      ) AS dt_seconds
+    FROM energy_production ep
+    WHERE ep.`Timestamp` >= TIMESTAMP(p_date)
+      AND ep.`Timestamp` <  TIMESTAMP(DATE_ADD(p_date, INTERVAL 1 DAY))
+  ) t
+  GROUP BY t.Monitor_ID
+  ON DUPLICATE KEY UPDATE
+    Total_Production = VALUES(Total_Production);
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `compute_production_monthly` (IN `p_year` INT, IN `p_month` INT)   BEGIN
+  INSERT INTO _computed_energy_production_monthly
+    (Monitor_ID, Year, Month, Total_Production)
+  SELECT
+    cepd.Monitor_ID,
+    YEAR(cepd.Date) AS Year,
+    MONTH(cepd.Date) AS Month,
+    COALESCE(SUM(cepd.Total_Production), 0) AS Total_Production
+  FROM _computed_energy_production_daily cepd
+  WHERE YEAR(cepd.Date) = p_year
+    AND MONTH(cepd.Date) = p_month
+  GROUP BY cepd.Monitor_ID, YEAR(cepd.Date), MONTH(cepd.Date)
+  ON DUPLICATE KEY UPDATE
+    Total_Production = VALUES(Total_Production);
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `compute_production_yearly` (IN `p_year` INT)   BEGIN
+  INSERT INTO _computed_energy_production_yearly
+    (Monitor_ID, Year, Total_Production)
+  SELECT
+    cepm.Monitor_ID,
+    YEAR(cepm.Year) AS Year,
+    COALESCE(SUM(cepm.Total_Production), 0) AS Total_Production
+  FROM _computed_energy_production_monthly cepm
+  WHERE YEAR(cepm.Year) = p_year
+  GROUP BY cepm.Monitor_ID, YEAR(cepm.Year)
+  ON DUPLICATE KEY UPDATE
+    Total_Production = VALUES(Total_Production);
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `compute_reserves_daily` (IN `p_date` DATE)   BEGIN
+  INSERT INTO _computed_energy_reserves_daily (Monitor_ID, `Date`, Reserve_Amount)
+  SELECT
+    m.Monitor_ID,
+    p_date AS `Date`,
+    GREATEST(
+      0,
+      COALESCE(prev.Reserve_Amount, 0)
+      + COALESCE(prod.Total_Production, 0)
+      - COALESCE(cons.Total_Consumption, 0)
+    ) AS Reserve_Amount
+  FROM monitors m
+  LEFT JOIN _computed_energy_reserves_daily prev
+    ON prev.Monitor_ID = m.Monitor_ID
+   AND prev.`Date` = DATE_SUB(p_date, INTERVAL 1 DAY)
+  LEFT JOIN _computed_energy_production_daily prod
+    ON prod.Monitor_ID = m.Monitor_ID
+   AND prod.`Date` = p_date
+  LEFT JOIN _computed_energy_consumption_daily cons
+    ON cons.Monitor_ID = m.Monitor_ID
+   AND cons.`Date` = p_date
+  ON DUPLICATE KEY UPDATE
+    Reserve_Amount = VALUES(Reserve_Amount);
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `compute_reserves_monthly` (IN `p_year` INT, IN `p_month` INT)   BEGIN
+  INSERT INTO _computed_energy_reserves_monthly (Monitor_ID, Month, Year, Avg_Reserve_Amount)
+  SELECT
+    m.Monitor_ID,
+    p_month,
+    p_year,
+    COALESCE(AVG(cerd.Reserve_Amount), 0) AS Avg_Reserve_Amount
+  FROM monitors m
+  LEFT JOIN _computed_energy_reserves_daily cerd
+    ON cerd.Monitor_ID = m.Monitor_ID
+   AND YEAR(cerd.Date) = p_year
+    AND MONTH(cerd.Date) = p_month
+  GROUP BY m.Monitor_ID
+  ON DUPLICATE KEY UPDATE
+    Avg_Reserve_Amount = VALUES(Avg_Reserve_Amount);
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `compute_reserves_yearly` (IN `p_year` INT)   BEGIN
+  INSERT INTO _computed_energy_reserves_yearly (Monitor_ID, Year, Avg_Reserve_Amount)
+  SELECT
+    m.Monitor_ID,
+    p_year,
+    COALESCE(AVG(cerm.Avg_Reserve_Amount), 0) AS Avg_Reserve_Amount
+  FROM monitors m
+  LEFT JOIN _computed_energy_reserves_monthly cerm
+    ON cerm.Monitor_ID = m.Monitor_ID
+   AND cerm.Year = p_year
+  GROUP BY m.Monitor_ID
+  ON DUPLICATE KEY UPDATE
+    Avg_Reserve_Amount = VALUES(Avg_Reserve_Amount);
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `compute_solar_daily` (IN `p_day` DATE)   BEGIN
+  INSERT INTO _computed_solar_panel_data_daily
+    (Monitor_ID, Date_Calculated, Theoretical_Panel_Production, Exact_Panel_Production, Panel_Efficiency, Total_Energy_Generated)
+  SELECT
+    cfg.Monitor_ID,
+    p_day AS Date_Calculated,
+    (cfg.Power_Rating * cfg.Avg_Sunlight_Hours * cfg.Derating_Factor) AS Theoretical_Panel_Production,
+    COALESCE(cepd.Daily_Exact, 0) AS Exact_Panel_Production,
+    CASE
+      WHEN (cfg.Power_Rating * cfg.Avg_Sunlight_Hours * cfg.Derating_Factor) > 0
+      THEN COALESCE(cepd.Daily_Exact, 0) / (cfg.Power_Rating * cfg.Avg_Sunlight_Hours * cfg.Derating_Factor)
+      ELSE 0
+    END AS Panel_Efficiency,
+    COALESCE(cepd.Daily_Exact, 0) AS Total_Energy_Generated
+  FROM solar_panel_config cfg
+  LEFT JOIN (
+    SELECT
+      Monitor_ID,
+      Total_Production AS Daily_Exact
+    FROM _computed_energy_production_daily
+    WHERE Date = p_day
+    GROUP BY Monitor_ID
+  ) cepd
+    ON cepd.Monitor_ID = cfg.Monitor_ID
+  ON DUPLICATE KEY UPDATE
+    Theoretical_Panel_Production = VALUES(Theoretical_Panel_Production),
+    Exact_Panel_Production = VALUES(Exact_Panel_Production),
+    Panel_Efficiency = VALUES(Panel_Efficiency),
+    Total_Energy_Generated = VALUES(Total_Energy_Generated);
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `compute_solar_monthly` (IN `p_month` INT, IN `p_year` INT)   BEGIN
+  INSERT INTO _computed_solar_panel_data_monthly (
+    Monitor_ID,
+    Month,
+    Year,
+    Theoretical_Panel_Production,
+    Avg_Exact_Panel_Production,
+    Avg_Panel_Efficiency,
+    Total_Energy_Generated
+  )
+  SELECT
+    spd.Monitor_ID,
+    p_month AS Month,
+    p_year  AS Year,
+    COALESCE(AVG(spd.Theoretical_Panel_Production), 0) AS Theoretical_Panel_Production,
+    COALESCE(AVG(spd.Exact_Panel_Production), 0)       AS Avg_Exact_Panel_Production,
+    COALESCE(AVG(spd.Panel_Efficiency), 0)             AS Avg_Panel_Efficiency,
+    COALESCE(SUM(spd.Total_Energy_Generated), 0)       AS Total_Energy_Generated
+  FROM _computed_solar_panel_data_daily spd
+  WHERE MONTH(spd.Date_Calculated) = p_month
+    AND YEAR(spd.Date_Calculated)  = p_year
+  GROUP BY spd.Monitor_ID
+  ON DUPLICATE KEY UPDATE
+    Theoretical_Panel_Production = VALUES(Theoretical_Panel_Production),
+    Avg_Exact_Panel_Production   = VALUES(Avg_Exact_Panel_Production),
+    Avg_Panel_Efficiency         = VALUES(Avg_Panel_Efficiency),
+    Total_Energy_Generated       = VALUES(Total_Energy_Generated);
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `compute_solar_yearly` (IN `p_year` INT)   BEGIN
+  INSERT INTO _computed_solar_panel_data_yearly (
+    Monitor_ID,
+    Year,
+    Theoretical_Panel_Production,
+    Avg_Exact_Panel_Production,
+    Avg_Panel_Efficiency,
+    Total_Energy_Generated
+  )
+  SELECT
+    spd.Monitor_ID,
+    p_year AS Year,
+    COALESCE(AVG(spd.Theoretical_Panel_Production), 0) AS Theoretical_Panel_Production,
+    COALESCE(AVG(spd.Avg_Exact_Panel_Production), 0)       AS Avg_Exact_Panel_Production,
+    COALESCE(AVG(spd.Avg_Panel_Efficiency), 0)             AS Avg_Panel_Efficiency,
+    COALESCE(SUM(spd.Total_Energy_Generated), 0)       AS Total_Energy_Generated
+  FROM _computed_solar_panel_data_yearly spd
+  WHERE Year = p_year
+  GROUP BY spd.Monitor_ID
+  ON DUPLICATE KEY UPDATE
+    Theoretical_Panel_Production = VALUES(Theoretical_Panel_Production),
+    Avg_Exact_Panel_Production   = VALUES(Avg_Exact_Panel_Production),
+    Avg_Panel_Efficiency         = VALUES(Avg_Panel_Efficiency),
+    Total_Energy_Generated       = VALUES(Total_Energy_Generated);
+END$$
+
+DELIMITER ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `accounts`
+--
+
+CREATE TABLE `accounts` (
+  `Email` varchar(30) NOT NULL,
+  `Name` varchar(30) NOT NULL,
+  `Password` varchar(255) NOT NULL COMMENT 'varchar length needs to be 255 to use bcrypt hashing',
+  `isAdmin` tinyint(1) NOT NULL,
+  `PhoneNumber` varchar(15) NOT NULL,
+  `MonitorType` varchar(30) NOT NULL,
+  `SubscriptionType` int(10) NOT NULL COMMENT 'If there is not enough time to create something useful out of this column delete it before presenting the final project'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `accounts`
+--
+
+INSERT INTO `accounts` (`Email`, `Name`, `Password`, `isAdmin`, `PhoneNumber`, `MonitorType`, `SubscriptionType`) VALUES
+('a', 'a', '$2b$10$nCqpbMiuSQAa0neaqOYXw.NrLS4D28RyTsFAS60eXCXCyk.jskK1O', 1, '123456789', 'Arduino UNO', 1),
+('b', 'b', '$2b$10$FTfSfBC4nRkQ6vHBGFflp.be9mfkGqF4Y93Yby0U7VOn4PnuocdvO', 0, '123456789', 'Arduino UNO', 1),
+('o', 'o', '$2b$10$wVus2ydVtqxPMUxd9jElpOyM.NQ2AOIXAFwpREYcoF6zLGFmtbSaq', 0, '1', '1', 1),
+('z', 'z', '$2b$10$aj78COtgL.ShVoHIwv07F.PdGrbKGxLFwAZElzY2fmSUstYuChDOq', 0, '1', '1', 1);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `consultation`
+--
+
+CREATE TABLE `consultation` (
+  `Consultation_ID` int(11) NOT NULL,
+  `User_Email` varchar(30) NOT NULL,
+  `DateTime` datetime NOT NULL,
+  `Details` varchar(1000) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `energy_consumption`
+--
+
+CREATE TABLE `energy_consumption` (
+  `Consumption_ID` int(11) NOT NULL,
+  `Monitor_ID` int(11) NOT NULL,
+  `Timestamp` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `Consumption_Value` float NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `energy_consumption`
+--
+
+INSERT INTO `energy_consumption` (`Consumption_ID`, `Monitor_ID`, `Timestamp`, `Consumption_Value`) VALUES
+(1, 5, '2024-03-03 20:00:00', 3.72),
+(2, 4, '2024-03-04 20:00:00', 1.56),
+(3, 4, '2024-03-03 20:00:00', 0.94),
+(4, 8, '2024-03-01 20:00:00', 1.27),
+(5, 14, '2024-03-07 20:00:00', 1.18),
+(6, 10, '2024-03-01 20:00:00', 2.31),
+(7, 8, '2024-03-08 20:00:00', 2.28),
+(8, 2, '2024-03-01 20:00:00', 3.3),
+(9, 18, '2024-03-06 20:00:00', 2.34),
+(10, 19, '2024-03-06 20:00:00', 0.67),
+(11, 1, '2024-03-10 20:00:00', 1.21),
+(12, 3, '2024-02-29 20:00:00', 0.6),
+(13, 4, '2024-03-06 20:00:00', 3.96),
+(14, 2, '2024-03-08 20:00:00', 2.03),
+(15, 6, '2024-03-09 20:00:00', 3.05),
+(16, 11, '2024-02-29 20:00:00', 2.04),
+(17, 15, '2024-03-09 20:00:00', 1),
+(18, 7, '2024-02-29 20:00:00', 1.76),
+(19, 15, '2024-03-07 20:00:00', 3.82),
+(20, 19, '2024-02-29 20:00:00', 2.91),
+(21, 14, '2024-03-05 20:00:00', 0.51),
+(22, 7, '2024-03-01 20:00:00', 3.8),
+(23, 4, '2024-03-04 20:00:00', 3),
+(24, 17, '2024-03-07 20:00:00', 1.92),
+(25, 4, '2024-02-29 20:00:00', 0.86),
+(26, 9, '2024-03-03 20:00:00', 1.27),
+(27, 1, '2024-03-02 20:00:00', 1.77),
+(28, 3, '2024-03-02 20:00:00', 3.19),
+(29, 19, '2024-03-05 20:00:00', 0.63),
+(30, 6, '2024-03-07 20:00:00', 0.96),
+(31, 1, '2024-02-29 20:00:00', 0.73),
+(32, 15, '2024-02-29 20:00:00', 1.91),
+(33, 4, '2024-03-10 20:00:00', 2.13),
+(34, 10, '2024-03-09 20:00:00', 2.31),
+(35, 17, '2024-03-05 20:00:00', 3.24),
+(36, 20, '2024-03-09 20:00:00', 2.42),
+(37, 5, '2024-03-08 20:00:00', 2.93),
+(38, 6, '2024-03-01 20:00:00', 2.9),
+(39, 3, '2024-03-04 20:00:00', 3.93),
+(40, 7, '2024-03-07 20:00:00', 3.87),
+(41, 9, '2024-02-29 20:00:00', 3.68),
+(42, 4, '2024-03-01 20:00:00', 1.73),
+(43, 11, '2024-03-07 20:00:00', 2.26),
+(44, 13, '2024-03-10 20:00:00', 0.83),
+(45, 15, '2024-03-10 20:00:00', 2.41),
+(46, 11, '2024-03-06 20:00:00', 0.7),
+(47, 17, '2024-03-01 20:00:00', 1.27),
+(48, 3, '2024-02-29 20:00:00', 0.56),
+(49, 10, '2024-03-06 20:00:00', 0.72),
+(50, 7, '2024-03-01 20:00:00', 3.69),
+(51, 8, '2024-03-06 20:00:00', 3.1),
+(52, 20, '2024-03-06 20:00:00', 1.63),
+(53, 3, '2024-03-03 20:00:00', 0.62),
+(54, 12, '2024-03-07 20:00:00', 1.49),
+(55, 18, '2024-03-05 20:00:00', 1.14),
+(56, 11, '2024-03-05 20:00:00', 3.55),
+(57, 12, '2024-03-08 20:00:00', 0.68),
+(58, 12, '2024-03-06 20:00:00', 3.88),
+(59, 11, '2024-03-08 20:00:00', 2.77),
+(60, 2, '2024-03-09 20:00:00', 1.81),
+(61, 20, '2024-03-01 20:00:00', 2.8),
+(62, 5, '2024-03-01 20:00:00', 3.26),
+(63, 9, '2024-03-03 20:00:00', 1.76),
+(64, 16, '2024-03-03 20:00:00', 3.94),
+(65, 13, '2024-03-03 20:00:00', 1.55),
+(66, 18, '2024-03-10 20:00:00', 0.5),
+(67, 5, '2024-03-06 20:00:00', 2.68),
+(68, 10, '2024-03-10 20:00:00', 3.04),
+(69, 2, '2024-03-01 20:00:00', 3.7),
+(70, 1, '2024-03-09 20:00:00', 1.18),
+(71, 5, '2024-02-29 20:00:00', 2.01),
+(72, 4, '2024-03-05 20:00:00', 0.89),
+(73, 17, '2024-03-05 20:00:00', 2.98),
+(74, 12, '2024-03-08 20:00:00', 2.92),
+(75, 13, '2024-03-04 20:00:00', 2.69),
+(76, 16, '2024-03-07 20:00:00', 1.13),
+(77, 15, '2024-03-03 20:00:00', 2.18),
+(78, 11, '2024-03-04 20:00:00', 3.86),
+(79, 16, '2024-03-02 20:00:00', 3.73),
+(80, 19, '2024-03-07 20:00:00', 0.87),
+(81, 19, '2024-02-29 20:00:00', 3.78),
+(82, 8, '2024-03-10 20:00:00', 1.62),
+(83, 11, '2024-03-06 20:00:00', 2.08),
+(84, 3, '2024-03-03 20:00:00', 2.32),
+(85, 5, '2024-03-06 20:00:00', 2.3),
+(86, 16, '2024-03-10 20:00:00', 3.2),
+(87, 19, '2024-03-01 20:00:00', 1.4),
+(88, 10, '2024-03-09 20:00:00', 2.39),
+(89, 6, '2024-03-10 20:00:00', 0.89),
+(90, 5, '2024-03-01 20:00:00', 0.78),
+(91, 6, '2024-03-10 20:00:00', 2.87),
+(92, 9, '2024-03-01 20:00:00', 2.84),
+(93, 5, '2024-03-09 20:00:00', 1.33),
+(94, 19, '2024-03-09 20:00:00', 1.8),
+(95, 8, '2024-03-10 20:00:00', 2.84),
+(96, 11, '2024-03-10 20:00:00', 0.64),
+(97, 6, '2024-02-29 20:00:00', 0.83),
+(98, 20, '2024-03-05 20:00:00', 0.79),
+(99, 17, '2024-02-29 20:00:00', 1.83),
+(100, 7, '2024-03-10 20:00:00', 3.03),
+(101, 20, '2024-03-06 20:00:00', 2.33),
+(102, 9, '2024-03-02 20:00:00', 3.75),
+(103, 18, '2024-03-02 20:00:00', 2.26),
+(104, 1, '2024-03-03 20:00:00', 2.37),
+(105, 8, '2024-02-29 20:00:00', 3.01),
+(106, 20, '2024-03-03 20:00:00', 2.62),
+(107, 13, '2024-03-05 20:00:00', 3.98),
+(108, 9, '2024-03-05 20:00:00', 1.81),
+(109, 10, '2024-03-10 20:00:00', 1.76),
+(110, 17, '2024-03-02 20:00:00', 0.93),
+(111, 2, '2024-03-03 20:00:00', 0.56),
+(112, 3, '2024-03-09 20:00:00', 0.58),
+(113, 12, '2024-03-05 20:00:00', 3.18),
+(114, 6, '2024-03-07 20:00:00', 2.69),
+(115, 7, '2024-03-10 20:00:00', 0.71),
+(116, 16, '2024-03-08 20:00:00', 2.56),
+(117, 7, '2024-02-29 20:00:00', 0.71),
+(118, 7, '2024-03-10 20:00:00', 3.44),
+(119, 5, '2024-03-06 20:00:00', 2.19),
+(120, 15, '2024-02-29 20:00:00', 2.71),
+(121, 8, '2024-03-05 20:00:00', 2.16),
+(122, 19, '2024-03-05 20:00:00', 1.01),
+(123, 17, '2024-03-09 20:00:00', 1.52),
+(124, 13, '2024-02-29 20:00:00', 3.46),
+(125, 14, '2024-03-04 20:00:00', 1.43),
+(126, 2, '2024-02-29 20:00:00', 1.3),
+(127, 8, '2024-02-29 20:00:00', 0.71),
+(128, 8, '2024-02-29 20:00:00', 1.47),
+(129, 17, '2024-03-01 20:00:00', 0.71),
+(130, 4, '2024-03-05 20:00:00', 3.61),
+(131, 4, '2024-03-02 20:00:00', 2.48),
+(132, 2, '2024-03-05 20:00:00', 2.21),
+(133, 5, '2024-03-10 20:00:00', 2.2),
+(134, 7, '2024-03-03 20:00:00', 2.12),
+(135, 19, '2024-03-06 20:00:00', 3.09),
+(136, 15, '2024-03-09 20:00:00', 3.16),
+(137, 12, '2024-03-09 20:00:00', 1.19),
+(138, 10, '2024-03-05 20:00:00', 0.9),
+(139, 12, '2024-02-29 20:00:00', 0.85),
+(140, 15, '2024-03-09 20:00:00', 2.66),
+(141, 3, '2024-03-10 20:00:00', 0.78),
+(142, 4, '2024-03-04 20:00:00', 3.65),
+(143, 6, '2024-03-01 20:00:00', 1.26),
+(144, 10, '2024-03-02 20:00:00', 1.04),
+(145, 5, '2024-03-09 20:00:00', 1.35),
+(146, 6, '2024-03-05 20:00:00', 1.72),
+(147, 11, '2024-03-09 20:00:00', 2.85),
+(148, 11, '2024-03-08 20:00:00', 1.61),
+(149, 15, '2024-03-03 20:00:00', 2.29),
+(150, 17, '2024-03-05 20:00:00', 2.69),
+(151, 1, '2024-03-02 20:00:00', 1.06),
+(152, 17, '2024-03-08 20:00:00', 3.31),
+(153, 9, '2024-03-02 20:00:00', 1.77),
+(154, 13, '2024-03-08 20:00:00', 3.78),
+(155, 19, '2024-03-03 20:00:00', 2.52),
+(156, 3, '2024-03-03 20:00:00', 2.58),
+(157, 16, '2024-03-04 20:00:00', 2.91),
+(158, 19, '2024-02-29 20:00:00', 1.46),
+(159, 8, '2024-02-29 20:00:00', 3.78),
+(160, 3, '2024-03-10 20:00:00', 0.8),
+(161, 12, '2024-03-08 20:00:00', 0.66),
+(162, 7, '2024-03-10 20:00:00', 2.28),
+(163, 20, '2024-03-05 20:00:00', 3.41),
+(164, 7, '2024-03-05 20:00:00', 2.28),
+(165, 3, '2024-02-29 20:00:00', 3.23),
+(166, 13, '2024-03-09 20:00:00', 2.88),
+(167, 2, '2024-03-01 20:00:00', 2.59),
+(168, 12, '2024-03-10 20:00:00', 0.63),
+(169, 1, '2024-03-04 20:00:00', 2.98),
+(170, 18, '2024-03-02 20:00:00', 0.57),
+(171, 2, '2024-03-07 20:00:00', 1.26),
+(172, 7, '2024-02-29 20:00:00', 3.61),
+(173, 9, '2024-03-01 20:00:00', 2.34),
+(174, 4, '2024-03-05 20:00:00', 3.13),
+(175, 11, '2024-03-10 20:00:00', 1.49),
+(176, 17, '2024-03-03 20:00:00', 0.69),
+(177, 9, '2024-03-08 20:00:00', 1.77),
+(178, 13, '2024-03-09 20:00:00', 0.99),
+(179, 8, '2024-02-29 20:00:00', 3.53),
+(180, 19, '2024-03-08 20:00:00', 3.53),
+(181, 4, '2024-03-04 20:00:00', 1.32),
+(182, 18, '2024-02-29 20:00:00', 1.47),
+(183, 19, '2024-03-10 20:00:00', 2.15),
+(184, 10, '2024-03-05 20:00:00', 2),
+(185, 14, '2024-03-09 20:00:00', 1.52),
+(186, 3, '2024-03-06 20:00:00', 1.21),
+(187, 19, '2024-03-03 20:00:00', 3.4),
+(188, 10, '2024-02-29 20:00:00', 1.46),
+(189, 18, '2024-02-29 20:00:00', 1.85),
+(190, 20, '2024-03-02 20:00:00', 0.6),
+(191, 15, '2024-03-10 20:00:00', 0.9),
+(192, 7, '2024-03-10 20:00:00', 2.08),
+(193, 8, '2024-03-02 20:00:00', 2.27),
+(194, 8, '2024-03-10 20:00:00', 0.58),
+(195, 14, '2024-03-03 20:00:00', 0.67),
+(196, 5, '2024-03-08 20:00:00', 2.29),
+(197, 13, '2024-03-10 20:00:00', 1.15),
+(198, 16, '2024-03-01 20:00:00', 2.63),
+(199, 12, '2024-03-01 20:00:00', 1.67),
+(200, 15, '2024-03-02 20:00:00', 2.07);
+
+--
+-- Triggers `energy_consumption`
+--
+DELIMITER $$
+CREATE TRIGGER `trg_energy_consumption_flag` AFTER INSERT ON `energy_consumption` FOR EACH ROW BEGIN
+  INSERT INTO recompute_days (`Date`, needs_consumption_daily, needs_reserves_daily)
+  VALUES (DATE(NEW.`Timestamp`), 1, 1)
+  ON DUPLICATE KEY UPDATE
+    needs_consumption_daily = 1,
+    needs_reserves_daily = 1;
+END
+$$
+DELIMITER ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `energy_production`
+--
+
+CREATE TABLE `energy_production` (
+  `Production_ID` int(11) NOT NULL,
+  `Monitor_ID` int(11) NOT NULL,
+  `Timestamp` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `Production_Value` float NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `energy_production`
+--
+
+INSERT INTO `energy_production` (`Production_ID`, `Monitor_ID`, `Timestamp`, `Production_Value`) VALUES
+(1, 4, '2024-03-02 20:00:00', 2.93),
+(2, 5, '2024-03-10 20:00:00', 3.41),
+(3, 11, '2024-02-29 20:00:00', 1.42),
+(4, 7, '2024-03-03 20:00:00', 0.8),
+(5, 4, '2024-03-07 20:00:00', 3.44),
+(6, 3, '2024-03-04 20:00:00', 0.71),
+(7, 12, '2024-03-10 20:00:00', 2.85),
+(8, 17, '2024-03-04 20:00:00', 2.18),
+(9, 11, '2024-03-02 20:00:00', 1.05),
+(10, 14, '2024-03-10 20:00:00', 3.47),
+(11, 18, '2024-03-02 20:00:00', 3.08),
+(12, 5, '2024-03-03 20:00:00', 3.93),
+(13, 13, '2024-03-10 20:00:00', 2.21),
+(14, 13, '2024-03-09 20:00:00', 2.36),
+(15, 4, '2024-03-05 20:00:00', 3.7),
+(16, 14, '2024-03-10 20:00:00', 0.87),
+(17, 13, '2024-03-02 20:00:00', 2.94),
+(18, 19, '2024-03-02 20:00:00', 3.41),
+(19, 5, '2024-03-04 20:00:00', 0.89),
+(20, 20, '2024-03-05 20:00:00', 2.74),
+(21, 6, '2024-03-02 20:00:00', 1.34),
+(22, 5, '2024-03-07 20:00:00', 3),
+(23, 20, '2024-03-06 20:00:00', 2.19),
+(24, 4, '2024-02-29 20:00:00', 3.54),
+(25, 6, '2024-03-03 20:00:00', 1.02),
+(26, 2, '2024-03-04 20:00:00', 2.86),
+(27, 17, '2024-02-29 20:00:00', 1.5),
+(28, 14, '2024-03-10 20:00:00', 0.99),
+(29, 1, '2024-03-07 20:00:00', 3.71),
+(30, 12, '2024-03-04 20:00:00', 3.1),
+(31, 4, '2024-03-01 20:00:00', 0.8),
+(32, 11, '2024-03-05 20:00:00', 1.17),
+(33, 5, '2024-02-29 20:00:00', 0.61),
+(34, 3, '2024-03-09 20:00:00', 1.82),
+(35, 8, '2024-03-01 20:00:00', 3.92),
+(36, 19, '2024-03-01 20:00:00', 3.84),
+(37, 12, '2024-03-02 20:00:00', 1.99),
+(38, 8, '2024-03-08 20:00:00', 1.12),
+(39, 18, '2024-03-01 20:00:00', 2.73),
+(40, 18, '2024-03-03 20:00:00', 1.67),
+(41, 17, '2024-03-04 20:00:00', 2.92),
+(42, 1, '2024-03-09 20:00:00', 1.37),
+(43, 11, '2024-03-03 20:00:00', 1.34),
+(44, 5, '2024-03-08 20:00:00', 1.06),
+(45, 13, '2024-02-29 20:00:00', 0.53),
+(46, 5, '2024-03-07 20:00:00', 3.45),
+(47, 8, '2024-03-05 20:00:00', 2.07),
+(48, 11, '2024-03-03 20:00:00', 3.39),
+(49, 18, '2024-03-10 20:00:00', 2.26),
+(50, 8, '2024-03-10 20:00:00', 3.16),
+(51, 7, '2024-02-29 20:00:00', 1.98),
+(52, 6, '2024-03-02 20:00:00', 3.75),
+(53, 1, '2024-03-01 20:00:00', 0.64),
+(54, 7, '2024-03-10 20:00:00', 1.83),
+(55, 20, '2024-03-04 20:00:00', 1.59),
+(56, 17, '2024-02-29 20:00:00', 1.79),
+(57, 15, '2024-03-09 20:00:00', 3.7),
+(58, 1, '2024-03-04 20:00:00', 0.7),
+(59, 8, '2024-03-02 20:00:00', 1.6),
+(60, 14, '2024-03-09 20:00:00', 3.78),
+(61, 6, '2024-03-09 20:00:00', 0.57),
+(62, 5, '2024-03-08 20:00:00', 2.13),
+(63, 5, '2024-03-01 20:00:00', 2.81),
+(64, 2, '2024-03-04 20:00:00', 2.6),
+(65, 11, '2024-03-07 20:00:00', 3.67),
+(66, 5, '2024-02-29 20:00:00', 3.41),
+(67, 8, '2024-03-03 20:00:00', 2.44),
+(68, 8, '2024-03-03 20:00:00', 1.61),
+(69, 5, '2024-03-08 20:00:00', 3.36),
+(70, 14, '2024-03-08 20:00:00', 3.7),
+(71, 6, '2024-03-06 20:00:00', 3.64),
+(72, 7, '2024-03-05 20:00:00', 2.5),
+(73, 19, '2024-02-29 20:00:00', 3.42),
+(74, 19, '2024-03-05 20:00:00', 2.03),
+(75, 13, '2024-03-03 20:00:00', 1.34),
+(76, 19, '2024-02-29 20:00:00', 2.86),
+(77, 19, '2024-03-05 20:00:00', 2.01),
+(78, 5, '2024-03-01 20:00:00', 3.88),
+(79, 7, '2024-03-02 20:00:00', 0.54),
+(80, 2, '2024-03-07 20:00:00', 2.73),
+(81, 7, '2024-03-08 20:00:00', 3.06),
+(82, 2, '2024-03-08 20:00:00', 2.35),
+(83, 13, '2024-03-07 20:00:00', 0.82),
+(84, 15, '2024-03-01 20:00:00', 3.49),
+(85, 2, '2024-03-07 20:00:00', 2.85),
+(86, 4, '2024-03-07 20:00:00', 2.24),
+(87, 5, '2024-03-07 20:00:00', 1.21),
+(88, 19, '2024-03-03 20:00:00', 2.81),
+(89, 10, '2024-03-06 20:00:00', 1.68),
+(90, 3, '2024-03-09 20:00:00', 3.63),
+(91, 20, '2024-03-05 20:00:00', 0.97),
+(92, 14, '2024-03-01 20:00:00', 1.03),
+(93, 19, '2024-03-01 20:00:00', 1.59),
+(94, 16, '2024-03-02 20:00:00', 3.54),
+(95, 1, '2024-03-10 20:00:00', 3.38),
+(96, 6, '2024-03-08 20:00:00', 2.98),
+(97, 16, '2024-02-29 20:00:00', 0.95),
+(98, 19, '2024-02-29 20:00:00', 3.32),
+(99, 20, '2024-03-01 20:00:00', 3.75),
+(100, 20, '2024-03-06 20:00:00', 1.81),
+(101, 8, '2024-03-03 20:00:00', 1.57),
+(102, 13, '2024-02-29 20:00:00', 1.97),
+(103, 12, '2024-03-02 20:00:00', 2.94),
+(104, 5, '2024-03-10 20:00:00', 1.6),
+(105, 12, '2024-03-10 20:00:00', 3.96),
+(106, 9, '2024-02-29 20:00:00', 2.56),
+(107, 1, '2024-03-02 20:00:00', 3.08),
+(108, 4, '2024-03-02 20:00:00', 1.58),
+(109, 20, '2024-03-02 20:00:00', 2.27),
+(110, 19, '2024-03-04 20:00:00', 1.6),
+(111, 15, '2024-03-03 20:00:00', 1.89),
+(112, 9, '2024-03-06 20:00:00', 2.74),
+(113, 15, '2024-03-08 20:00:00', 3.15),
+(114, 1, '2024-02-29 20:00:00', 2.74),
+(115, 9, '2024-02-29 20:00:00', 2.27),
+(116, 19, '2024-03-10 20:00:00', 1.54),
+(117, 18, '2024-03-06 20:00:00', 1.79),
+(118, 8, '2024-03-02 20:00:00', 2.05),
+(119, 6, '2024-03-04 20:00:00', 2.83),
+(120, 11, '2024-03-05 20:00:00', 1.83),
+(121, 18, '2024-02-29 20:00:00', 1.59),
+(122, 11, '2024-03-06 20:00:00', 3.55),
+(123, 8, '2024-02-29 20:00:00', 3.92),
+(124, 1, '2024-03-06 20:00:00', 2.13),
+(125, 15, '2024-03-06 20:00:00', 3.39),
+(126, 7, '2024-03-01 20:00:00', 2.12),
+(127, 8, '2024-03-08 20:00:00', 3.88),
+(128, 8, '2024-03-08 20:00:00', 3.31),
+(129, 18, '2024-03-03 20:00:00', 2.83),
+(130, 17, '2024-03-05 20:00:00', 2.09),
+(131, 2, '2024-03-03 20:00:00', 3.45),
+(132, 1, '2024-03-03 20:00:00', 2.87),
+(133, 2, '2024-03-06 20:00:00', 2.51),
+(134, 1, '2024-03-09 20:00:00', 1.2),
+(135, 2, '2024-03-06 20:00:00', 0.7),
+(136, 6, '2024-03-04 20:00:00', 3.99),
+(137, 2, '2024-03-04 20:00:00', 2.89),
+(138, 4, '2024-03-07 20:00:00', 3.33),
+(139, 15, '2024-03-01 20:00:00', 3.7),
+(140, 10, '2024-03-06 20:00:00', 2.05),
+(141, 18, '2024-03-06 20:00:00', 2.14),
+(142, 17, '2024-03-03 20:00:00', 2.88),
+(143, 11, '2024-03-07 20:00:00', 2.78),
+(144, 11, '2024-03-05 20:00:00', 1.34),
+(145, 15, '2024-03-06 20:00:00', 0.53),
+(146, 12, '2024-03-04 20:00:00', 2.14),
+(147, 5, '2024-03-02 20:00:00', 2.58),
+(148, 8, '2024-02-29 20:00:00', 2.27),
+(149, 11, '2024-03-06 20:00:00', 3.24),
+(150, 17, '2024-03-06 20:00:00', 1.22),
+(151, 9, '2024-03-01 20:00:00', 2.01),
+(152, 3, '2024-03-09 20:00:00', 1.37),
+(153, 15, '2024-02-29 20:00:00', 0.86),
+(154, 17, '2024-03-05 20:00:00', 3.85),
+(155, 17, '2024-03-03 20:00:00', 2.57),
+(156, 13, '2024-03-03 20:00:00', 2.72),
+(157, 17, '2024-03-06 20:00:00', 3.28),
+(158, 14, '2024-03-08 20:00:00', 2.19),
+(159, 16, '2024-03-04 20:00:00', 2.35),
+(160, 8, '2024-03-04 20:00:00', 2.27),
+(161, 1, '2024-03-01 20:00:00', 2.03),
+(162, 3, '2024-03-03 20:00:00', 2.9),
+(163, 16, '2024-03-02 20:00:00', 1.51),
+(164, 8, '2024-03-01 20:00:00', 2.42),
+(165, 15, '2024-03-10 20:00:00', 1.77),
+(166, 14, '2024-03-04 20:00:00', 2.69),
+(167, 19, '2024-03-02 20:00:00', 1.93),
+(168, 20, '2024-03-07 20:00:00', 2.18),
+(169, 19, '2024-03-10 20:00:00', 2.45),
+(170, 3, '2024-03-06 20:00:00', 0.79),
+(171, 15, '2024-02-29 20:00:00', 1.67),
+(172, 2, '2024-03-05 20:00:00', 3.94),
+(173, 3, '2024-03-04 20:00:00', 3.04),
+(174, 19, '2024-03-06 20:00:00', 2.67),
+(175, 5, '2024-03-06 20:00:00', 1.73),
+(176, 7, '2024-03-01 20:00:00', 2.99),
+(177, 6, '2024-03-09 20:00:00', 3.5),
+(178, 8, '2024-03-01 20:00:00', 3.03),
+(179, 12, '2024-03-09 20:00:00', 1.21),
+(180, 9, '2024-03-10 20:00:00', 0.93),
+(181, 18, '2024-03-04 20:00:00', 1.06),
+(182, 3, '2024-03-10 20:00:00', 3.84),
+(183, 2, '2024-03-06 20:00:00', 1.68),
+(184, 18, '2024-03-02 20:00:00', 3.2),
+(185, 20, '2024-03-04 20:00:00', 3.62),
+(186, 8, '2024-03-04 20:00:00', 1.52),
+(187, 17, '2024-03-10 20:00:00', 1.31),
+(188, 5, '2024-03-02 20:00:00', 0.89),
+(189, 12, '2024-03-03 20:00:00', 1.02),
+(190, 9, '2024-02-29 20:00:00', 3.06),
+(191, 2, '2024-03-02 20:00:00', 2.6),
+(192, 12, '2024-03-10 20:00:00', 2.63),
+(193, 16, '2024-03-01 20:00:00', 1.43),
+(194, 7, '2024-03-09 20:00:00', 3.28),
+(195, 14, '2024-03-09 20:00:00', 0.55),
+(196, 13, '2024-03-09 20:00:00', 3.19),
+(197, 11, '2024-03-06 20:00:00', 1.38),
+(198, 13, '2024-03-03 20:00:00', 2.98),
+(199, 4, '2024-03-08 20:00:00', 3.8),
+(200, 3, '2024-02-29 20:00:00', 0.5),
+(202, 1, '2026-01-04 23:21:49', 10839.8),
+(203, 1, '2026-01-04 23:21:49', 11767.6),
+(204, 1, '2026-01-04 23:21:49', 12036.1),
+(205, 1, '2026-01-04 23:21:50', 11572.3),
+(206, 1, '2026-01-04 23:21:50', 12133.8),
+(207, 1, '2026-01-04 23:21:50', 11987.3),
+(208, 1, '2026-01-04 23:21:50', 11572.3),
+(209, 1, '2026-01-04 23:21:51', 12255.9),
+(210, 1, '2026-01-04 23:21:51', 11840.8),
+(211, 1, '2026-01-04 23:21:51', 11621.1),
+(212, 1, '2026-01-04 23:21:51', 12280.3),
+(213, 1, '2026-01-04 23:21:52', 11669.9),
+(214, 1, '2026-01-04 23:21:52', 11743.2),
+(215, 1, '2026-01-04 23:21:52', 12280.3),
+(216, 1, '2026-01-04 23:21:52', 11596.7),
+(217, 1, '2026-01-04 23:21:53', 11889.7),
+(218, 1, '2026-01-04 23:21:53', 12207),
+(219, 1, '2026-01-04 23:21:53', 11547.8),
+(220, 1, '2026-01-04 23:21:53', 11962.9),
+(221, 1, '2026-01-04 23:21:54', 12085),
+(222, 1, '2026-01-04 23:21:54', 11523.4),
+(223, 1, '2026-01-04 23:21:54', 12133.8),
+(224, 1, '2026-01-04 23:21:54', 11938.5),
+(225, 1, '2026-01-04 23:21:55', 11547.8),
+(226, 1, '2026-01-04 23:21:55', 12231.5),
+(227, 1, '2026-01-04 23:21:55', 11792),
+(228, 1, '2026-01-04 23:21:55', 11596.7),
+(229, 1, '2026-01-04 23:21:56', 12304.7),
+(230, 1, '2026-01-04 23:21:56', 11645.5),
+(231, 1, '2026-01-04 23:21:56', 11743.2),
+(232, 1, '2026-01-04 23:21:56', 12255.9),
+(233, 1, '2026-01-04 23:21:57', 11572.3),
+(234, 1, '2026-01-04 23:21:57', 11914.1),
+(235, 1, '2026-01-04 23:21:57', 12182.6),
+(236, 1, '2026-01-04 23:21:57', 11523.4),
+(237, 1, '2026-01-04 23:21:58', 12011.7),
+(238, 1, '2026-01-04 23:21:58', 12036.1),
+(239, 1, '2026-01-04 23:21:58', 11547.8),
+(240, 1, '2026-01-04 23:21:58', 12158.2),
+(241, 1, '2026-01-04 23:21:59', 11865.2),
+(242, 1, '2026-01-04 23:21:59', 11596.7),
+(243, 1, '2026-01-04 23:21:59', 12255.9),
+(244, 1, '2026-01-04 23:21:59', 11694.3),
+(245, 1, '2026-01-04 23:22:00', 11718.8),
+(246, 1, '2026-01-04 23:22:00', 12255.9),
+(247, 1, '2026-01-04 23:22:00', 11572.3),
+(248, 1, '2026-01-04 23:22:00', 11865.2),
+(249, 1, '2026-01-04 23:22:01', 12158.2),
+(250, 1, '2026-01-04 23:22:01', 11523.4),
+(251, 1, '2026-01-04 23:22:01', 12011.7),
+(252, 1, '2026-01-04 23:22:01', 12036.1),
+(253, 1, '2026-01-04 23:22:02', 11547.8),
+(254, 1, '2026-01-04 23:22:02', 12182.6),
+(255, 1, '2026-01-04 23:22:02', 11840.8),
+(256, 1, '2026-01-04 23:22:02', 11596.7),
+(257, 1, '2026-01-04 23:22:03', 12255.9),
+(258, 1, '2026-01-04 23:22:03', 11645.5),
+(259, 1, '2026-01-04 23:22:03', 11767.6),
+(260, 1, '2026-01-04 23:22:03', 12255.9),
+(261, 1, '2026-01-04 23:22:04', 11523.4),
+(262, 1, '2026-01-04 23:22:04', 11938.5),
+(263, 1, '2026-01-04 23:22:04', 12109.4),
+(264, 1, '2026-01-04 23:22:04', 11523.4),
+(265, 1, '2026-01-04 23:22:05', 12109.4),
+(266, 1, '2026-01-04 23:22:05', 11914.1),
+(267, 1, '2026-01-04 23:22:05', 11572.3),
+(268, 1, '2026-01-04 23:22:05', 12231.5),
+(269, 1, '2026-01-04 23:22:06', 11669.9),
+(270, 1, '2026-01-04 23:22:06', 11694.3),
+(271, 1, '2026-01-04 23:22:06', 12255.9),
+(272, 1, '2026-01-04 23:22:06', 11572.3),
+(273, 1, '2026-01-04 23:22:07', 11889.7),
+(274, 1, '2026-01-04 23:22:07', 12158.2),
+(275, 1, '2026-01-04 23:22:07', 11523.4),
+(276, 1, '2026-01-04 23:22:07', 12036.1),
+(277, 1, '2026-01-04 23:22:08', 12011.7),
+(278, 1, '2026-01-04 23:22:08', 11523.4),
+(279, 1, '2026-01-04 23:22:08', 12207),
+(280, 1, '2026-01-04 23:22:08', 11816.4),
+(281, 1, '2026-01-04 23:22:09', 11621.1),
+(282, 1, '2026-01-04 23:22:09', 12255.9),
+(283, 1, '2026-01-04 23:22:09', 11621.1),
+(284, 1, '2026-01-04 23:22:09', 11792),
+(285, 1, '2026-01-04 23:22:10', 12255.9),
+(286, 1, '2026-01-04 23:22:10', 11523.4),
+(287, 1, '2026-01-04 23:22:10', 11914.1),
+(288, 1, '2026-01-04 23:22:11', 12085),
+(289, 1, '2026-01-04 23:22:11', 11523.4),
+(290, 1, '2026-01-04 23:22:11', 12133.8),
+(291, 1, '2026-01-04 23:22:11', 11865.2),
+(292, 1, '2026-01-04 23:22:12', 11572.3),
+(293, 1, '2026-01-04 23:22:12', 12255.9),
+(294, 1, '2026-01-04 23:22:12', 11645.5),
+(295, 1, '2026-01-04 23:22:12', 11743.2),
+(296, 1, '2026-01-04 23:22:13', 12255.9),
+(297, 1, '2026-01-04 23:22:13', 11547.8),
+(298, 1, '2026-01-04 23:22:13', 11889.7),
+(299, 1, '2026-01-04 23:22:13', 12109.4),
+(300, 1, '2026-01-04 23:22:14', 11523.4),
+(301, 1, '2026-01-04 23:22:14', 12133.8),
+(302, 1, '2026-01-04 23:22:14', 11914.1),
+(303, 1, '2026-01-04 23:22:14', 11572.3),
+(304, 1, '2026-01-04 23:22:15', 12255.9),
+(305, 1, '2026-01-04 23:22:15', 11694.3),
+(306, 1, '2026-01-04 23:22:15', 11743.2),
+(307, 1, '2026-01-04 23:22:15', 12280.3),
+(308, 1, '2026-01-04 23:22:16', 11572.3),
+(309, 1, '2026-01-04 23:22:16', 11914.1),
+(310, 1, '2026-01-04 23:22:16', 12133.8),
+(311, 1, '2026-01-04 23:22:16', 11499),
+(312, 1, '2026-01-04 23:22:17', 12085);
+
+--
+-- Triggers `energy_production`
+--
+DELIMITER $$
+CREATE TRIGGER `trg_energy_production_flag` AFTER INSERT ON `energy_production` FOR EACH ROW BEGIN
+  INSERT INTO recompute_days (`Date`, needs_production_daily, needs_reserves_daily, needs_solar_daily)
+  VALUES (DATE(NEW.`Timestamp`), 1, 1, 1)
+  ON DUPLICATE KEY UPDATE
+    needs_production_daily = 1,
+    needs_reserves_daily = 1,
+    needs_solar_daily = 1;
+END
+$$
+DELIMITER ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `environmental_data`
+--
+
+CREATE TABLE `environmental_data` (
+  `EnvData_ID` int(11) NOT NULL,
+  `Monitor_ID` int(11) NOT NULL,
+  `Timestamp` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `Light_Intensity` int(11) NOT NULL,
+  `Temperature` float NOT NULL,
+  `Humidity` float NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `environmental_data`
+--
+
+INSERT INTO `environmental_data` (`EnvData_ID`, `Monitor_ID`, `Timestamp`, `Light_Intensity`, `Temperature`, `Humidity`) VALUES
+(1, 2, '2024-02-29 20:00:00', 2, 1.15, 1.99),
+(2, 9, '2024-02-29 21:00:00', 1, 3.05, 2.25),
+(3, 13, '2024-02-29 22:00:00', 1, 1.94, 1.79),
+(4, 20, '2024-02-29 23:00:00', 2, 2.12, 2.14),
+(5, 13, '2024-03-01 00:00:00', 3, 2.7, 1.08),
+(6, 18, '2024-03-01 01:00:00', 1, 3.27, 2.79),
+(7, 8, '2024-03-01 02:00:00', 1, 1.08, 2.48),
+(8, 10, '2024-03-01 03:00:00', 2, 0.76, 3.47),
+(9, 4, '2024-03-01 04:00:00', 3, 1.71, 2.7),
+(10, 9, '2024-03-01 05:00:00', 3, 1.62, 3.83),
+(11, 15, '2024-03-01 06:00:00', 4, 2.44, 1.07),
+(12, 18, '2024-03-01 07:00:00', 4, 0.8, 2.82),
+(13, 10, '2024-03-01 08:00:00', 2, 2.7, 3.55),
+(14, 16, '2024-03-01 09:00:00', 2, 1.31, 1.9),
+(15, 8, '2024-03-01 10:00:00', 3, 1.92, 1.38),
+(16, 5, '2024-03-01 11:00:00', 1, 1.09, 3.52),
+(17, 4, '2024-03-01 12:00:00', 2, 3.68, 1.74),
+(18, 18, '2024-03-01 13:00:00', 3, 1.18, 3.03),
+(19, 10, '2024-03-01 14:00:00', 2, 3.39, 1.6),
+(20, 4, '2024-03-01 15:00:00', 1, 1.91, 1.45),
+(21, 18, '2024-03-01 16:00:00', 4, 3.38, 3.5),
+(22, 10, '2024-03-01 17:00:00', 2, 2.88, 2.07),
+(23, 13, '2024-03-01 18:00:00', 4, 3.35, 0.53),
+(24, 13, '2024-03-01 19:00:00', 4, 1.54, 1.75),
+(25, 4, '2024-03-01 20:00:00', 3, 2.21, 1.24),
+(26, 8, '2024-03-01 21:00:00', 4, 2.47, 2.1),
+(27, 4, '2024-03-01 22:00:00', 1, 0.95, 2),
+(28, 17, '2024-03-01 23:00:00', 2, 1.52, 1.05),
+(29, 15, '2024-03-02 00:00:00', 3, 1.06, 3.16),
+(30, 18, '2024-03-02 01:00:00', 3, 0.62, 3.25),
+(31, 7, '2024-03-02 02:00:00', 4, 2.31, 3.09),
+(32, 1, '2024-03-02 03:00:00', 3, 3.95, 1.7),
+(33, 14, '2024-03-02 04:00:00', 1, 1.38, 1.38),
+(34, 4, '2024-03-02 05:00:00', 3, 1.08, 2.3),
+(35, 5, '2024-03-02 06:00:00', 2, 3.89, 3.42),
+(36, 13, '2024-03-02 07:00:00', 2, 1.38, 2.04),
+(37, 19, '2024-03-02 08:00:00', 4, 3.2, 3.11),
+(38, 14, '2024-03-02 09:00:00', 4, 3.09, 2.41),
+(39, 7, '2024-03-02 10:00:00', 3, 2.89, 1.27),
+(40, 6, '2024-03-02 11:00:00', 1, 1.13, 1.59),
+(41, 15, '2024-03-02 12:00:00', 2, 2.08, 3.52),
+(42, 14, '2024-03-02 13:00:00', 1, 1.54, 0.76),
+(43, 12, '2024-03-02 14:00:00', 1, 0.58, 2.35),
+(44, 7, '2024-03-02 15:00:00', 1, 3.24, 3.27),
+(45, 3, '2024-03-02 16:00:00', 4, 3.23, 3.03),
+(46, 5, '2024-03-02 17:00:00', 2, 2, 3.75),
+(47, 2, '2024-03-02 18:00:00', 1, 0.87, 1.4),
+(48, 19, '2024-03-02 19:00:00', 4, 1.62, 3.92),
+(49, 17, '2024-03-02 20:00:00', 3, 0.84, 3.18),
+(50, 16, '2024-03-02 21:00:00', 2, 3.79, 1.05),
+(51, 20, '2024-03-02 22:00:00', 3, 1.02, 0.67),
+(52, 11, '2024-03-02 23:00:00', 1, 3.36, 2.88),
+(53, 17, '2024-03-03 00:00:00', 1, 2.6, 2.29),
+(54, 14, '2024-03-03 01:00:00', 1, 2.1, 1.28),
+(55, 20, '2024-03-03 02:00:00', 2, 3.09, 2.86),
+(56, 16, '2024-03-03 03:00:00', 3, 1.12, 4),
+(57, 16, '2024-03-03 04:00:00', 3, 1.9, 2.42),
+(58, 15, '2024-03-03 05:00:00', 2, 1.16, 0.55),
+(59, 3, '2024-03-03 06:00:00', 3, 2.25, 3.76),
+(60, 17, '2024-03-03 07:00:00', 2, 3.03, 1.72),
+(61, 1, '2024-03-03 08:00:00', 1, 2.78, 3.68),
+(62, 3, '2024-03-03 09:00:00', 2, 3.32, 3.69),
+(63, 7, '2024-03-03 10:00:00', 4, 2.56, 1.71),
+(64, 8, '2024-03-03 11:00:00', 2, 2.26, 1.54),
+(65, 2, '2024-03-03 12:00:00', 1, 1.98, 1.18),
+(66, 4, '2024-03-03 13:00:00', 2, 1.71, 1.02),
+(67, 3, '2024-03-03 14:00:00', 2, 1.52, 2.08),
+(68, 12, '2024-03-03 15:00:00', 3, 1.83, 4),
+(69, 13, '2024-03-03 16:00:00', 3, 2.98, 0.72),
+(70, 7, '2024-03-03 17:00:00', 3, 1.01, 2.95),
+(71, 7, '2024-03-03 18:00:00', 1, 3.09, 1.69),
+(72, 10, '2024-03-03 19:00:00', 3, 2.48, 1.95),
+(73, 5, '2024-03-03 20:00:00', 2, 3.12, 4),
+(74, 14, '2024-03-03 21:00:00', 4, 3.59, 1.74),
+(75, 6, '2024-03-03 22:00:00', 2, 3.41, 0.65),
+(76, 19, '2024-03-03 23:00:00', 3, 0.65, 1.49),
+(77, 5, '2024-03-04 00:00:00', 3, 2.73, 2.18),
+(78, 12, '2024-03-04 01:00:00', 1, 1.73, 3.24),
+(79, 5, '2024-03-04 02:00:00', 3, 3.31, 2.57),
+(80, 4, '2024-03-04 03:00:00', 2, 2.57, 3.32),
+(81, 14, '2024-03-04 04:00:00', 3, 3.01, 0.77),
+(82, 3, '2024-03-04 05:00:00', 3, 1.64, 0.78),
+(83, 14, '2024-03-04 06:00:00', 2, 2.29, 1.79),
+(84, 13, '2024-03-04 07:00:00', 1, 2.85, 2.2),
+(85, 8, '2024-03-04 08:00:00', 4, 3.25, 2.86),
+(86, 10, '2024-03-04 09:00:00', 3, 1.55, 2.22),
+(87, 19, '2024-03-04 10:00:00', 4, 3.2, 3.83),
+(88, 16, '2024-03-04 11:00:00', 2, 2.09, 2.24),
+(89, 8, '2024-03-04 12:00:00', 2, 1.5, 3.92),
+(90, 6, '2024-03-04 13:00:00', 4, 1.58, 3.51),
+(91, 11, '2024-03-04 14:00:00', 4, 3.89, 3.11),
+(92, 1, '2024-03-04 15:00:00', 2, 2.39, 2.46),
+(93, 7, '2024-03-04 16:00:00', 1, 2.51, 0.7),
+(94, 7, '2024-03-04 17:00:00', 4, 2.57, 0.82),
+(95, 10, '2024-03-04 18:00:00', 1, 1.75, 2.42),
+(96, 20, '2024-03-04 19:00:00', 2, 1.7, 0.88),
+(97, 6, '2024-03-04 20:00:00', 2, 1.18, 1.74),
+(98, 4, '2024-03-04 21:00:00', 1, 2.21, 1.38),
+(99, 6, '2024-03-04 22:00:00', 2, 1.62, 2.55),
+(100, 1, '2024-03-04 23:00:00', 3, 2.07, 1.09),
+(101, 9, '2024-03-05 00:00:00', 2, 1.02, 3.7),
+(102, 6, '2024-03-05 01:00:00', 1, 3.86, 1.75),
+(103, 6, '2024-03-05 02:00:00', 1, 3.18, 3.28),
+(104, 11, '2024-03-05 03:00:00', 3, 0.89, 3.86),
+(105, 1, '2024-03-05 04:00:00', 4, 1.28, 0.93),
+(106, 5, '2024-03-05 05:00:00', 2, 1.92, 0.56),
+(107, 8, '2024-03-05 06:00:00', 2, 3.57, 3.6),
+(108, 16, '2024-03-05 07:00:00', 1, 3.86, 1.84),
+(109, 4, '2024-03-05 08:00:00', 3, 3.43, 2.1),
+(110, 9, '2024-03-05 09:00:00', 1, 3.26, 3.65),
+(111, 20, '2024-03-05 10:00:00', 1, 2.15, 1.18),
+(112, 2, '2024-03-05 11:00:00', 2, 3.55, 2.12),
+(113, 4, '2024-03-05 12:00:00', 4, 3.21, 2.01),
+(114, 7, '2024-03-05 13:00:00', 2, 2.96, 2.64),
+(115, 13, '2024-03-05 14:00:00', 3, 1.02, 2.17),
+(116, 13, '2024-03-05 15:00:00', 2, 3.69, 0.66),
+(117, 4, '2024-03-05 16:00:00', 3, 3.83, 0.62),
+(118, 4, '2024-03-05 17:00:00', 2, 3.12, 3.15),
+(119, 7, '2024-03-05 18:00:00', 3, 3.18, 3.84),
+(120, 12, '2024-03-05 19:00:00', 2, 3.15, 3.62),
+(121, 13, '2024-03-05 20:00:00', 4, 0.85, 2.1),
+(122, 19, '2024-03-05 21:00:00', 2, 2.2, 2.48),
+(123, 18, '2024-03-05 22:00:00', 2, 2.55, 2.36),
+(124, 3, '2024-03-05 23:00:00', 4, 0.65, 1.48),
+(125, 16, '2024-03-06 00:00:00', 1, 2.9, 0.72),
+(126, 13, '2024-03-06 01:00:00', 2, 3.46, 2.53),
+(127, 12, '2024-03-06 02:00:00', 3, 2.21, 0.68),
+(128, 4, '2024-03-06 03:00:00', 2, 3.08, 1.34),
+(129, 16, '2024-03-06 04:00:00', 2, 0.73, 2.84),
+(130, 11, '2024-03-06 05:00:00', 3, 2.76, 1.01),
+(131, 20, '2024-03-06 06:00:00', 2, 2.34, 0.87),
+(132, 2, '2024-03-06 07:00:00', 2, 3.04, 1.1),
+(133, 6, '2024-03-06 08:00:00', 2, 1.43, 2.31),
+(134, 1, '2024-03-06 09:00:00', 1, 2.13, 1.9),
+(135, 10, '2024-03-06 10:00:00', 2, 1.94, 3.39),
+(136, 1, '2024-03-06 11:00:00', 1, 1.68, 2.7),
+(137, 3, '2024-03-06 12:00:00', 1, 2.92, 1.36),
+(138, 15, '2024-03-06 13:00:00', 1, 2.99, 1.66),
+(139, 14, '2024-03-06 14:00:00', 3, 1.3, 1.47),
+(140, 13, '2024-03-06 15:00:00', 1, 2.55, 3.6),
+(141, 18, '2024-03-06 16:00:00', 3, 3.54, 0.62),
+(142, 19, '2024-03-06 17:00:00', 1, 2.23, 1.25),
+(143, 15, '2024-03-06 18:00:00', 2, 3.7, 1.21),
+(144, 3, '2024-03-06 19:00:00', 2, 0.84, 1.57),
+(145, 3, '2024-03-06 20:00:00', 3, 1.43, 1.48),
+(146, 18, '2024-03-06 21:00:00', 2, 1.95, 1.06),
+(147, 10, '2024-03-06 22:00:00', 1, 0.54, 1.66),
+(148, 18, '2024-03-06 23:00:00', 3, 2.59, 3.63),
+(149, 5, '2024-03-07 00:00:00', 3, 2.27, 1.04),
+(150, 5, '2024-03-07 01:00:00', 2, 0.9, 2.85),
+(151, 2, '2024-03-07 02:00:00', 4, 3.38, 1.43),
+(152, 13, '2024-03-07 03:00:00', 2, 2.5, 2.62),
+(153, 5, '2024-03-07 04:00:00', 3, 3.78, 1.11),
+(154, 17, '2024-03-07 05:00:00', 4, 0.64, 1.22),
+(155, 15, '2024-03-07 06:00:00', 1, 2.39, 3.61),
+(156, 10, '2024-03-07 07:00:00', 4, 2.49, 2.57),
+(157, 4, '2024-03-07 08:00:00', 1, 2.73, 1.62),
+(158, 5, '2024-03-07 09:00:00', 2, 2.09, 3.48),
+(159, 20, '2024-03-07 10:00:00', 3, 1.78, 1.34),
+(160, 2, '2024-03-07 11:00:00', 2, 1.89, 1.25),
+(161, 4, '2024-03-07 12:00:00', 3, 2.73, 3.91),
+(162, 4, '2024-03-07 13:00:00', 2, 2.02, 1.32),
+(163, 18, '2024-03-07 14:00:00', 2, 2.41, 3.92),
+(164, 8, '2024-03-07 15:00:00', 4, 2.51, 2.73),
+(165, 14, '2024-03-07 16:00:00', 3, 1.34, 2.77),
+(166, 8, '2024-03-07 17:00:00', 1, 3.57, 3.53),
+(167, 15, '2024-03-07 18:00:00', 4, 0.64, 1.94),
+(168, 5, '2024-03-07 19:00:00', 2, 3.8, 1.75),
+(169, 4, '2024-03-07 20:00:00', 4, 2.82, 2.81),
+(170, 3, '2024-03-07 21:00:00', 2, 3.56, 0.94),
+(171, 6, '2024-03-07 22:00:00', 3, 1.84, 0.92),
+(172, 5, '2024-03-07 23:00:00', 2, 0.96, 0.58),
+(173, 8, '2024-03-08 00:00:00', 2, 1.91, 1),
+(174, 19, '2024-03-08 01:00:00', 1, 3.29, 3.78),
+(175, 5, '2024-03-08 02:00:00', 2, 1.78, 3.95),
+(176, 1, '2024-03-08 03:00:00', 2, 1.29, 0.97),
+(177, 5, '2024-03-08 04:00:00', 4, 2.35, 3.88),
+(178, 11, '2024-03-08 05:00:00', 2, 2.61, 1.1),
+(179, 20, '2024-03-08 06:00:00', 1, 1.78, 0.55),
+(180, 19, '2024-03-08 07:00:00', 4, 1.92, 0.96),
+(181, 5, '2024-03-08 08:00:00', 2, 2.05, 0.57),
+(182, 6, '2024-03-08 09:00:00', 3, 3.16, 3.48),
+(183, 12, '2024-03-08 10:00:00', 2, 1.64, 2.82),
+(184, 5, '2024-03-08 11:00:00', 2, 3.74, 2.73),
+(185, 7, '2024-03-08 12:00:00', 2, 2.51, 0.52),
+(186, 5, '2024-03-08 13:00:00', 3, 1.8, 3.81),
+(187, 9, '2024-03-08 14:00:00', 2, 1.31, 2.24),
+(188, 20, '2024-03-08 15:00:00', 1, 2.02, 1.12),
+(189, 18, '2024-03-08 16:00:00', 4, 0.62, 3.32),
+(190, 11, '2024-03-08 17:00:00', 2, 2.01, 0.55),
+(191, 6, '2024-03-08 18:00:00', 3, 3.13, 2.32),
+(192, 15, '2024-03-08 19:00:00', 3, 3.64, 1.31),
+(193, 13, '2024-03-08 20:00:00', 1, 2.16, 1.26),
+(194, 3, '2024-03-08 21:00:00', 2, 2.22, 0.63),
+(195, 8, '2024-03-08 22:00:00', 4, 0.89, 3.35),
+(196, 7, '2024-03-08 23:00:00', 1, 3.55, 3.65),
+(197, 12, '2024-03-09 00:00:00', 3, 3.64, 1.11),
+(198, 17, '2024-03-09 01:00:00', 2, 1.1, 2.71),
+(199, 2, '2024-03-09 02:00:00', 1, 1.27, 0.83),
+(200, 1, '2024-03-09 03:00:00', 3, 3.16, 1.91);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `monitors`
+--
+
+CREATE TABLE `monitors` (
+  `Monitor_ID` int(11) NOT NULL,
+  `User_Email` varchar(30) NOT NULL,
+  `Location` varchar(50) NOT NULL,
+  `Status` varchar(30) NOT NULL,
+  `Microprocessor_Type` varchar(20) NOT NULL,
+  `Installation_Date` datetime NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `monitors`
+--
+
+INSERT INTO `monitors` (`Monitor_ID`, `User_Email`, `Location`, `Status`, `Microprocessor_Type`, `Installation_Date`) VALUES
+(1, 'b', 'Dubai - Villa 12', 'Online', 'ESP32', '2024-01-15 00:00:00'),
+(2, 'b', 'Dubai - Apartment 5A', 'Online', 'ESP8266', '2024-01-18 00:00:00'),
+(3, 'b', 'Sharjah - Warehouse', 'Maintenance', 'Arduino Uno', '2024-01-20 00:00:00'),
+(4, 'b', 'Abu Dhabi - Office 3', 'Online', 'Raspberry Pi 4', '2024-01-25 00:00:00'),
+(5, 'b', 'Dubai - Villa 18', 'Offline', 'ESP32', '2024-02-01 00:00:00'),
+(6, 'b', 'Ajman - Shop 2', 'Online', 'ESP8266', '2024-02-03 00:00:00'),
+(7, 'b', 'Dubai - Apartment 9C', 'Online', 'ESP32', '2024-02-05 00:00:00'),
+(8, 'b', 'Fujairah - Storage', 'Maintenance', 'Arduino Mega', '2024-02-10 00:00:00'),
+(9, 'b', 'Abu Dhabi - Villa 4', 'Online', 'Raspberry Pi 3', '2024-02-12 00:00:00'),
+(10, 'b', 'Dubai - Mall Unit 21', 'Offline', 'ESP8266', '2024-02-15 00:00:00'),
+(11, 'b', 'Sharjah - Office 1', 'Online', 'ESP32', '2024-02-18 00:00:00'),
+(12, 'b', 'Dubai - Villa 22', 'Online', 'Arduino Uno', '2024-02-20 00:00:00'),
+(13, 'b', 'Al Ain - Farm House', 'Maintenance', 'ESP32', '2024-02-22 00:00:00'),
+(14, 'b', 'Dubai - Apartment 2B', 'Online', 'ESP8266', '2024-02-25 00:00:00'),
+(15, 'b', 'Ras Al Khaimah - Warehouse', 'Offline', 'Raspberry Pi 4', '2024-02-28 00:00:00'),
+(16, 'b', 'Dubai - Office 7', 'Online', 'ESP32', '2024-03-02 00:00:00'),
+(17, 'b', 'Sharjah - Shop 6', 'Online', 'Arduino Mega', '2024-03-05 00:00:00'),
+(18, 'b', 'Abu Dhabi - Apartment 11', 'Maintenance', 'ESP8266', '2024-03-08 00:00:00'),
+(19, 'b', 'Dubai - Villa 30', 'Online', 'ESP32', '2024-03-10 00:00:00'),
+(20, 'b', 'Ajman - Office 2', 'Offline', 'Raspberry Pi 3', '2024-03-12 00:00:00');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `notifications`
+--
+
+CREATE TABLE `notifications` (
+  `Notification_ID` int(11) NOT NULL,
+  `Monitor_ID` int(11) NOT NULL,
+  `EnergyConsumption_ID` int(11) DEFAULT NULL,
+  `EnergyProduction_ID` int(11) DEFAULT NULL,
+  `EnergyReserves_ID` int(11) DEFAULT NULL,
+  `EnvData_ID` int(11) DEFAULT NULL,
+  `SellRequest_ID` int(11) DEFAULT NULL,
+  `SolarData_ID` int(11) DEFAULT NULL,
+  `Timestamp` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `Notification_Type` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `recompute_days`
+--
+
+CREATE TABLE `recompute_days` (
+  `Date` date NOT NULL,
+  `needs_consumption_daily` tinyint(1) NOT NULL DEFAULT 0,
+  `needs_production_daily` tinyint(1) NOT NULL DEFAULT 0,
+  `needs_reserves_daily` tinyint(1) NOT NULL DEFAULT 0,
+  `needs_solar_daily` tinyint(1) NOT NULL DEFAULT 0,
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `recompute_days`
+--
+
+INSERT INTO `recompute_days` (`Date`, `needs_consumption_daily`, `needs_production_daily`, `needs_reserves_daily`, `needs_solar_daily`, `updated_at`) VALUES
+('2024-02-29', 1, 1, 1, 1, '2026-01-04 00:53:49'),
+('2024-03-01', 1, 1, 1, 1, '2026-01-04 00:53:49'),
+('2024-03-02', 1, 1, 1, 1, '2026-01-04 00:53:49'),
+('2024-03-03', 1, 1, 1, 1, '2026-01-04 00:53:49'),
+('2024-03-04', 1, 1, 1, 1, '2026-01-04 00:53:49'),
+('2024-03-05', 1, 1, 1, 1, '2026-01-04 00:53:49'),
+('2024-03-06', 1, 1, 1, 1, '2026-01-04 00:53:49'),
+('2024-03-07', 1, 1, 1, 1, '2026-01-04 00:53:49'),
+('2024-03-08', 1, 1, 1, 1, '2026-01-04 00:53:49'),
+('2024-03-09', 1, 1, 1, 1, '2026-01-04 00:53:49'),
+('2024-03-10', 1, 1, 1, 1, '2026-01-04 00:53:49'),
+('2025-12-04', 1, 1, 1, 1, '2026-01-03 20:23:04'),
+('2025-12-05', 1, 1, 1, 1, '2026-01-03 20:23:04'),
+('2025-12-06', 1, 1, 1, 1, '2026-01-03 20:23:04'),
+('2025-12-07', 1, 1, 1, 1, '2026-01-03 20:23:04'),
+('2025-12-08', 1, 1, 1, 1, '2026-01-03 20:23:04'),
+('2025-12-09', 1, 1, 1, 1, '2026-01-03 20:23:04'),
+('2025-12-10', 1, 1, 1, 1, '2026-01-03 20:23:04'),
+('2026-01-05', 0, 1, 1, 1, '2026-01-04 23:21:49');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `sample_table`
+--
+
+CREATE TABLE `sample_table` (
+  `ID` int(11) NOT NULL,
+  `Voltage` float NOT NULL,
+  `Current` float NOT NULL,
+  `Power` float NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `sell_request`
+--
+
+CREATE TABLE `sell_request` (
+  `Request_ID` int(11) NOT NULL,
+  `Monitor_ID` int(11) NOT NULL,
+  `EnergyReserves_ID` int(11) DEFAULT NULL,
+  `Energy_Amount` float NOT NULL,
+  `Request_Date` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `Status` varchar(8) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `solar_panel_config`
+--
+
+CREATE TABLE `solar_panel_config` (
+  `Monitor_ID` int(11) NOT NULL,
+  `Power_Rating` decimal(10,2) NOT NULL,
+  `Avg_Sunlight_Hours` decimal(5,2) NOT NULL,
+  `Derating_Factor` decimal(4,2) NOT NULL DEFAULT 0.75
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `solar_panel_config`
+--
+
+INSERT INTO `solar_panel_config` (`Monitor_ID`, `Power_Rating`, `Avg_Sunlight_Hours`, `Derating_Factor`) VALUES
+(1, 400.00, 6.50, 0.75);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `system_logs`
+--
+
+CREATE TABLE `system_logs` (
+  `Log_ID` int(11) NOT NULL,
+  `Actor_Email` varchar(50) NOT NULL,
+  `Details` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL CHECK (json_valid(`Details`)),
+  `Datetime` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `system_logs`
+--
+
+INSERT INTO `system_logs` (`Log_ID`, `Actor_Email`, `Details`, `Datetime`) VALUES
+(1, 'a', '{\"action\":\"CREATE\",\"table\":\"accounts\",\"record\":{\"email\":\"z\"}}', '2026-01-01 17:43:01'),
+(2, 'a', '{\"action\":\"CREATE\",\"table\":\"accounts\",\"record\":{\"email\":\"g\"}}', '2026-01-03 22:36:46');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `_computed_energy_consumption_daily`
+--
+
+CREATE TABLE `_computed_energy_consumption_daily` (
+  `Monitor_ID` int(11) NOT NULL,
+  `Date` date NOT NULL,
+  `Total_Consumption` decimal(12,2) NOT NULL DEFAULT 0.00
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `_computed_energy_consumption_daily`
+--
+
+INSERT INTO `_computed_energy_consumption_daily` (`Monitor_ID`, `Date`, `Total_Consumption`) VALUES
+(2, '2024-03-08', 30.24),
+(3, '2024-03-07', 29.04),
+(4, '2024-03-07', 95.04),
+(5, '2024-03-07', 52.56),
+(6, '2024-03-08', 23.04),
+(7, '2024-03-08', 92.88),
+(8, '2024-03-07', 74.40),
+(10, '2024-03-07', 17.28),
+(11, '2024-03-07', 16.80),
+(11, '2024-03-08', 54.24),
+(12, '2024-03-07', 93.12),
+(12, '2024-03-08', 35.76),
+(14, '2024-03-08', 28.32),
+(15, '2024-03-08', 91.68),
+(16, '2024-03-08', 27.12),
+(17, '2024-03-08', 46.08),
+(18, '2024-03-07', 56.16),
+(19, '2024-03-07', 74.16),
+(19, '2024-03-08', 20.88),
+(20, '2024-03-07', 55.92);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `_computed_energy_consumption_monthly`
+--
+
+CREATE TABLE `_computed_energy_consumption_monthly` (
+  `Monitor_ID` int(11) NOT NULL,
+  `Year` smallint(6) NOT NULL,
+  `Month` tinyint(4) NOT NULL,
+  `Total_Consumption` decimal(12,2) NOT NULL DEFAULT 0.00
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `_computed_energy_consumption_monthly`
+--
+
+INSERT INTO `_computed_energy_consumption_monthly` (`Monitor_ID`, `Year`, `Month`, `Total_Consumption`) VALUES
+(2, 2024, 3, 30.24),
+(3, 2024, 3, 29.04),
+(4, 2024, 3, 95.04),
+(5, 2024, 3, 52.56),
+(6, 2024, 3, 23.04),
+(7, 2024, 3, 92.88),
+(8, 2024, 3, 74.40),
+(10, 2024, 3, 17.28),
+(11, 2024, 3, 71.04),
+(12, 2024, 3, 128.88),
+(14, 2024, 3, 28.32),
+(15, 2024, 3, 91.68),
+(16, 2024, 3, 27.12),
+(17, 2024, 3, 46.08),
+(18, 2024, 3, 56.16),
+(19, 2024, 3, 95.04),
+(20, 2024, 3, 55.92);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `_computed_energy_consumption_yearly`
+--
+
+CREATE TABLE `_computed_energy_consumption_yearly` (
+  `Monitor_ID` int(11) NOT NULL,
+  `Year` smallint(6) NOT NULL,
+  `Total_Consumption` decimal(12,2) NOT NULL DEFAULT 0.00
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `_computed_energy_production_daily`
+--
+
+CREATE TABLE `_computed_energy_production_daily` (
+  `Monitor_ID` int(11) NOT NULL,
+  `Date` date NOT NULL,
+  `Total_Production` decimal(12,2) NOT NULL DEFAULT 0.00
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `_computed_energy_production_daily`
+--
+
+INSERT INTO `_computed_energy_production_daily` (`Monitor_ID`, `Date`, `Total_Production`) VALUES
+(1, '2024-03-07', 51.12),
+(1, '2024-03-08', 89.04),
+(1, '2026-01-05', 273558.60),
+(2, '2024-03-07', 40.32),
+(2, '2024-03-08', 68.40),
+(3, '2024-03-07', 18.96),
+(4, '2024-03-08', 53.76),
+(5, '2024-03-07', 41.52),
+(5, '2024-03-08', 82.80),
+(6, '2024-03-07', 87.36),
+(9, '2024-03-07', 65.76),
+(10, '2024-03-07', 49.20),
+(11, '2024-03-07', 33.12),
+(11, '2024-03-08', 88.08),
+(13, '2024-03-08', 19.68),
+(15, '2024-03-07', 12.72),
+(17, '2024-03-07', 78.72),
+(18, '2024-03-07', 42.96),
+(19, '2024-03-07', 64.08),
+(20, '2024-03-07', 43.44),
+(20, '2024-03-08', 52.32);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `_computed_energy_production_monthly`
+--
+
+CREATE TABLE `_computed_energy_production_monthly` (
+  `Monitor_ID` int(11) NOT NULL,
+  `Year` smallint(6) NOT NULL,
+  `Month` tinyint(4) NOT NULL,
+  `Total_Production` decimal(12,2) NOT NULL DEFAULT 0.00
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `_computed_energy_production_monthly`
+--
+
+INSERT INTO `_computed_energy_production_monthly` (`Monitor_ID`, `Year`, `Month`, `Total_Production`) VALUES
+(1, 2026, 1, 273558.60);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `_computed_energy_production_yearly`
+--
+
+CREATE TABLE `_computed_energy_production_yearly` (
+  `Monitor_ID` int(11) NOT NULL,
+  `Year` smallint(6) NOT NULL,
+  `Total_Production` decimal(12,2) NOT NULL DEFAULT 0.00
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `_computed_energy_reserves_daily`
+--
+
+CREATE TABLE `_computed_energy_reserves_daily` (
+  `EnergyReserves_ID` int(11) NOT NULL,
+  `Monitor_ID` int(11) NOT NULL,
+  `Date` date NOT NULL,
+  `Reserve_Amount` decimal(10,2) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `_computed_energy_reserves_daily`
+--
+
+INSERT INTO `_computed_energy_reserves_daily` (`EnergyReserves_ID`, `Monitor_ID`, `Date`, `Reserve_Amount`) VALUES
+(1, 1, '2024-03-08', 140.16),
+(2, 2, '2024-03-08', 78.48),
+(3, 3, '2024-03-08', 0.00),
+(4, 4, '2024-03-08', 53.76),
+(5, 5, '2024-03-08', 82.80),
+(6, 6, '2024-03-08', 64.32),
+(7, 7, '2024-03-08', 0.00),
+(8, 8, '2024-03-08', 0.00),
+(9, 9, '2024-03-08', 65.76),
+(10, 10, '2024-03-08', 31.92),
+(11, 11, '2024-03-08', 50.16),
+(12, 12, '2024-03-08', 0.00),
+(13, 13, '2024-03-08', 19.68),
+(14, 14, '2024-03-08', 0.00),
+(15, 15, '2024-03-08', 0.00),
+(16, 16, '2024-03-08', 0.00),
+(17, 17, '2024-03-08', 32.64),
+(18, 18, '2024-03-08', 0.00),
+(19, 19, '2024-03-08', 0.00),
+(20, 20, '2024-03-08', 52.32),
+(64, 1, '2024-03-07', 51.12),
+(65, 2, '2024-03-07', 40.32),
+(66, 3, '2024-03-07', 0.00),
+(67, 4, '2024-03-07', 0.00),
+(68, 5, '2024-03-07', 0.00),
+(69, 6, '2024-03-07', 87.36),
+(70, 7, '2024-03-07', 0.00),
+(71, 8, '2024-03-07', 0.00),
+(72, 9, '2024-03-07', 65.76),
+(73, 10, '2024-03-07', 31.92),
+(74, 11, '2024-03-07', 16.32),
+(75, 12, '2024-03-07', 0.00),
+(76, 13, '2024-03-07', 0.00),
+(77, 14, '2024-03-07', 0.00),
+(78, 15, '2024-03-07', 12.72),
+(79, 16, '2024-03-07', 0.00),
+(80, 17, '2024-03-07', 78.72),
+(81, 18, '2024-03-07', 0.00),
+(82, 19, '2024-03-07', 0.00),
+(83, 20, '2024-03-07', 0.00),
+(104, 1, '2024-03-21', 200.00),
+(105, 1, '2026-01-05', 273558.60),
+(106, 2, '2026-01-05', 0.00),
+(107, 3, '2026-01-05', 0.00),
+(108, 4, '2026-01-05', 0.00),
+(109, 5, '2026-01-05', 0.00),
+(110, 6, '2026-01-05', 0.00),
+(111, 7, '2026-01-05', 0.00),
+(112, 8, '2026-01-05', 0.00),
+(113, 9, '2026-01-05', 0.00),
+(114, 10, '2026-01-05', 0.00),
+(115, 11, '2026-01-05', 0.00),
+(116, 12, '2026-01-05', 0.00),
+(117, 13, '2026-01-05', 0.00),
+(118, 14, '2026-01-05', 0.00),
+(119, 15, '2026-01-05', 0.00),
+(120, 16, '2026-01-05', 0.00),
+(121, 17, '2026-01-05', 0.00),
+(122, 18, '2026-01-05', 0.00),
+(123, 19, '2026-01-05', 0.00),
+(124, 20, '2026-01-05', 0.00);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `_computed_energy_reserves_monthly`
+--
+
+CREATE TABLE `_computed_energy_reserves_monthly` (
+  `EnergyReserves_ID` int(11) NOT NULL,
+  `Monitor_ID` int(11) NOT NULL,
+  `Month` tinyint(4) NOT NULL,
+  `Year` smallint(6) NOT NULL,
+  `Avg_Reserve_Amount` decimal(10,2) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `_computed_energy_reserves_monthly`
+--
+
+INSERT INTO `_computed_energy_reserves_monthly` (`EnergyReserves_ID`, `Monitor_ID`, `Month`, `Year`, `Avg_Reserve_Amount`) VALUES
+(33, 2, 3, 2024, 59.40),
+(34, 3, 3, 2024, 0.00),
+(35, 4, 3, 2024, 26.88),
+(36, 5, 3, 2024, 41.40),
+(37, 6, 3, 2024, 75.84),
+(38, 7, 3, 2024, 0.00),
+(39, 8, 3, 2024, 0.00),
+(40, 9, 3, 2024, 65.76),
+(41, 10, 3, 2024, 31.92),
+(42, 11, 3, 2024, 33.24),
+(43, 12, 3, 2024, 0.00),
+(44, 13, 3, 2024, 9.84),
+(45, 14, 3, 2024, 0.00),
+(46, 15, 3, 2024, 6.36),
+(47, 16, 3, 2024, 0.00),
+(48, 17, 3, 2024, 55.68),
+(49, 18, 3, 2024, 0.00),
+(50, 19, 3, 2024, 0.00),
+(51, 20, 3, 2024, 26.16),
+(63, 1, 3, 2024, 95.64),
+(66, 1, 1, 2026, 273558.60),
+(67, 2, 1, 2026, 0.00),
+(68, 3, 1, 2026, 0.00),
+(69, 4, 1, 2026, 0.00),
+(70, 5, 1, 2026, 0.00),
+(71, 6, 1, 2026, 0.00),
+(72, 7, 1, 2026, 0.00),
+(73, 8, 1, 2026, 0.00),
+(74, 9, 1, 2026, 0.00),
+(75, 10, 1, 2026, 0.00),
+(76, 11, 1, 2026, 0.00),
+(77, 12, 1, 2026, 0.00),
+(78, 13, 1, 2026, 0.00),
+(79, 14, 1, 2026, 0.00),
+(80, 15, 1, 2026, 0.00),
+(81, 16, 1, 2026, 0.00),
+(82, 17, 1, 2026, 0.00),
+(83, 18, 1, 2026, 0.00),
+(84, 19, 1, 2026, 0.00),
+(85, 20, 1, 2026, 0.00);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `_computed_energy_reserves_yearly`
+--
+
+CREATE TABLE `_computed_energy_reserves_yearly` (
+  `EnergyReserves_ID` int(11) NOT NULL,
+  `Monitor_ID` int(11) NOT NULL,
+  `Year` smallint(6) NOT NULL,
+  `Avg_Reserve_Amount` decimal(10,2) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `_computed_energy_reserves_yearly`
+--
+
+INSERT INTO `_computed_energy_reserves_yearly` (`EnergyReserves_ID`, `Monitor_ID`, `Year`, `Avg_Reserve_Amount`) VALUES
+(1, 1, 2026, 273558.60),
+(2, 2, 2026, 0.00),
+(3, 3, 2026, 0.00),
+(4, 4, 2026, 0.00),
+(5, 5, 2026, 0.00),
+(6, 6, 2026, 0.00),
+(7, 7, 2026, 0.00),
+(8, 8, 2026, 0.00),
+(9, 9, 2026, 0.00),
+(10, 10, 2026, 0.00),
+(11, 11, 2026, 0.00),
+(12, 12, 2026, 0.00),
+(13, 13, 2026, 0.00),
+(14, 14, 2026, 0.00),
+(15, 15, 2026, 0.00),
+(16, 16, 2026, 0.00),
+(17, 17, 2026, 0.00),
+(18, 18, 2026, 0.00),
+(19, 19, 2026, 0.00),
+(20, 20, 2026, 0.00);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `_computed_environmental_data_daily`
+--
+
+CREATE TABLE `_computed_environmental_data_daily` (
+  `Monitor_ID` int(11) NOT NULL,
+  `Date` date NOT NULL,
+  `Avg_Light_Intensity` float NOT NULL,
+  `Avg_Temperature` float NOT NULL,
+  `Avg_Humidity` float NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `_computed_environmental_data_monthly`
+--
+
+CREATE TABLE `_computed_environmental_data_monthly` (
+  `Monitor_ID` int(11) NOT NULL,
+  `Month` tinyint(4) NOT NULL,
+  `Year` smallint(6) NOT NULL,
+  `Avg_Light_Intensity` float NOT NULL,
+  `Avg_Temperature` float NOT NULL,
+  `Avg_Humidity` float NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `_computed_environmental_data_yearly`
+--
+
+CREATE TABLE `_computed_environmental_data_yearly` (
+  `Monitor_ID` int(11) NOT NULL,
+  `Year` smallint(6) NOT NULL,
+  `Avg_Light_Intensity` float NOT NULL,
+  `Avg_Temperature` float NOT NULL,
+  `Avg_Humidity` float NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `_computed_solar_panel_data_daily`
+--
+
+CREATE TABLE `_computed_solar_panel_data_daily` (
+  `Monitor_ID` int(11) NOT NULL,
+  `Date_Calculated` date NOT NULL,
+  `Theoretical_Panel_Production` float NOT NULL,
+  `Exact_Panel_Production` float NOT NULL,
+  `Panel_Efficiency` float NOT NULL,
+  `Total_Energy_Generated` float NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `_computed_solar_panel_data_daily`
+--
+
+INSERT INTO `_computed_solar_panel_data_daily` (`Monitor_ID`, `Date_Calculated`, `Theoretical_Panel_Production`, `Exact_Panel_Production`, `Panel_Efficiency`, `Total_Energy_Generated`) VALUES
+(1, '2024-03-08', 1950, 89.04, 0.0456615, 89.04),
+(1, '2026-01-05', 1950, 273559, 140.286, 273559);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `_computed_solar_panel_data_monthly`
+--
+
+CREATE TABLE `_computed_solar_panel_data_monthly` (
+  `Monitor_ID` int(11) NOT NULL,
+  `Month` tinyint(4) NOT NULL,
+  `Year` smallint(6) NOT NULL,
+  `Theoretical_Panel_Production` float NOT NULL,
+  `Avg_Exact_Panel_Production` float NOT NULL,
+  `Avg_Panel_Efficiency` float NOT NULL,
+  `Total_Energy_Generated` float NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `_computed_solar_panel_data_yearly`
+--
+
+CREATE TABLE `_computed_solar_panel_data_yearly` (
+  `Monitor_ID` int(11) NOT NULL,
+  `Year` smallint(6) NOT NULL,
+  `Theoretical_Panel_Production` float NOT NULL,
+  `Avg_Exact_Panel_Production` float NOT NULL,
+  `Avg_Panel_Efficiency` float NOT NULL,
+  `Total_Energy_Generated` float NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Indexes for dumped tables
+--
+
+--
+-- Indexes for table `accounts`
+--
+ALTER TABLE `accounts`
+  ADD PRIMARY KEY (`Email`);
+
+--
+-- Indexes for table `consultation`
+--
+ALTER TABLE `consultation`
+  ADD PRIMARY KEY (`Consultation_ID`),
+  ADD KEY `User_Email` (`User_Email`);
+
+--
+-- Indexes for table `energy_consumption`
+--
+ALTER TABLE `energy_consumption`
+  ADD PRIMARY KEY (`Consumption_ID`) USING BTREE,
+  ADD KEY `Monitor_ID` (`Monitor_ID`);
+
+--
+-- Indexes for table `energy_production`
+--
+ALTER TABLE `energy_production`
+  ADD PRIMARY KEY (`Production_ID`),
+  ADD KEY `Monitor_ID` (`Monitor_ID`);
+
+--
+-- Indexes for table `environmental_data`
+--
+ALTER TABLE `environmental_data`
+  ADD PRIMARY KEY (`EnvData_ID`),
+  ADD KEY `Monitor_ID` (`Monitor_ID`);
+
+--
+-- Indexes for table `monitors`
+--
+ALTER TABLE `monitors`
+  ADD PRIMARY KEY (`Monitor_ID`),
+  ADD KEY `User_Email` (`User_Email`);
+
+--
+-- Indexes for table `notifications`
+--
+ALTER TABLE `notifications`
+  ADD PRIMARY KEY (`Notification_ID`),
+  ADD KEY `EnergyConsumption_ID` (`EnergyConsumption_ID`),
+  ADD KEY `EnergyProduction_ID` (`EnergyProduction_ID`),
+  ADD KEY `EnergyReserves_ID` (`EnergyReserves_ID`),
+  ADD KEY `EnvData_ID` (`EnvData_ID`),
+  ADD KEY `SellRequest_ID` (`SellRequest_ID`),
+  ADD KEY `SolarData_ID` (`SolarData_ID`),
+  ADD KEY `Monitor_ID` (`Monitor_ID`);
+
+--
+-- Indexes for table `recompute_days`
+--
+ALTER TABLE `recompute_days`
+  ADD PRIMARY KEY (`Date`);
+
+--
+-- Indexes for table `sell_request`
+--
+ALTER TABLE `sell_request`
+  ADD PRIMARY KEY (`Request_ID`),
+  ADD KEY `EnergyReserves_ID` (`EnergyReserves_ID`),
+  ADD KEY `Monitor_ID` (`Monitor_ID`);
+
+--
+-- Indexes for table `solar_panel_config`
+--
+ALTER TABLE `solar_panel_config`
+  ADD PRIMARY KEY (`Monitor_ID`);
+
+--
+-- Indexes for table `system_logs`
+--
+ALTER TABLE `system_logs`
+  ADD PRIMARY KEY (`Log_ID`),
+  ADD KEY `fk_systemlogs_useremail` (`Actor_Email`);
+
+--
+-- Indexes for table `_computed_energy_consumption_daily`
+--
+ALTER TABLE `_computed_energy_consumption_daily`
+  ADD PRIMARY KEY (`Monitor_ID`,`Date`),
+  ADD UNIQUE KEY `uq_cecd` (`Monitor_ID`,`Date`);
+
+--
+-- Indexes for table `_computed_energy_consumption_monthly`
+--
+ALTER TABLE `_computed_energy_consumption_monthly`
+  ADD PRIMARY KEY (`Year`,`Month`,`Monitor_ID`) USING BTREE,
+  ADD UNIQUE KEY `uq_cecm` (`Monitor_ID`,`Year`,`Month`);
+
+--
+-- Indexes for table `_computed_energy_consumption_yearly`
+--
+ALTER TABLE `_computed_energy_consumption_yearly`
+  ADD PRIMARY KEY (`Year`,`Monitor_ID`) USING BTREE,
+  ADD UNIQUE KEY `uq_cecy` (`Monitor_ID`,`Year`);
+
+--
+-- Indexes for table `_computed_energy_production_daily`
+--
+ALTER TABLE `_computed_energy_production_daily`
+  ADD PRIMARY KEY (`Monitor_ID`,`Date`),
+  ADD UNIQUE KEY `uq_cepd` (`Monitor_ID`,`Date`);
+
+--
+-- Indexes for table `_computed_energy_production_monthly`
+--
+ALTER TABLE `_computed_energy_production_monthly`
+  ADD PRIMARY KEY (`Year`,`Month`,`Monitor_ID`) USING BTREE,
+  ADD UNIQUE KEY `uq_cepm` (`Monitor_ID`,`Year`,`Month`);
+
+--
+-- Indexes for table `_computed_energy_production_yearly`
+--
+ALTER TABLE `_computed_energy_production_yearly`
+  ADD PRIMARY KEY (`Year`,`Monitor_ID`) USING BTREE,
+  ADD UNIQUE KEY `uq_cepy` (`Monitor_ID`,`Year`);
+
+--
+-- Indexes for table `_computed_energy_reserves_daily`
+--
+ALTER TABLE `_computed_energy_reserves_daily`
+  ADD PRIMARY KEY (`EnergyReserves_ID`),
+  ADD UNIQUE KEY `uq_erd` (`Monitor_ID`,`Date`) USING BTREE,
+  ADD KEY `idx_energy_reserves_monitor` (`Monitor_ID`);
+
+--
+-- Indexes for table `_computed_energy_reserves_monthly`
+--
+ALTER TABLE `_computed_energy_reserves_monthly`
+  ADD PRIMARY KEY (`EnergyReserves_ID`),
+  ADD UNIQUE KEY `uq_erm` (`Monitor_ID`,`Month`) USING BTREE,
+  ADD KEY `idx_energy_reserves_monitor` (`Monitor_ID`);
+
+--
+-- Indexes for table `_computed_energy_reserves_yearly`
+--
+ALTER TABLE `_computed_energy_reserves_yearly`
+  ADD PRIMARY KEY (`EnergyReserves_ID`),
+  ADD UNIQUE KEY `uq_ery` (`Monitor_ID`,`Year`) USING BTREE,
+  ADD KEY `idx_energy_reserves_monitor` (`Monitor_ID`);
+
+--
+-- Indexes for table `_computed_environmental_data_daily`
+--
+ALTER TABLE `_computed_environmental_data_daily`
+  ADD PRIMARY KEY (`Monitor_ID`,`Date`),
+  ADD UNIQUE KEY `uq_edd` (`Monitor_ID`,`Date`);
+
+--
+-- Indexes for table `_computed_environmental_data_monthly`
+--
+ALTER TABLE `_computed_environmental_data_monthly`
+  ADD PRIMARY KEY (`Monitor_ID`,`Month`,`Year`) USING BTREE,
+  ADD UNIQUE KEY `uq_edm` (`Monitor_ID`,`Month`,`Year`) USING BTREE;
+
+--
+-- Indexes for table `_computed_environmental_data_yearly`
+--
+ALTER TABLE `_computed_environmental_data_yearly`
+  ADD PRIMARY KEY (`Monitor_ID`,`Year`),
+  ADD UNIQUE KEY `uq_edy` (`Monitor_ID`,`Year`);
+
+--
+-- Indexes for table `_computed_solar_panel_data_daily`
+--
+ALTER TABLE `_computed_solar_panel_data_daily`
+  ADD PRIMARY KEY (`Monitor_ID`,`Date_Calculated`) USING BTREE,
+  ADD UNIQUE KEY `uq_spdd` (`Monitor_ID`,`Date_Calculated`) USING BTREE;
+
+--
+-- Indexes for table `_computed_solar_panel_data_monthly`
+--
+ALTER TABLE `_computed_solar_panel_data_monthly`
+  ADD PRIMARY KEY (`Monitor_ID`,`Month`,`Year`) USING BTREE,
+  ADD UNIQUE KEY `uq_spdm` (`Monitor_ID`,`Month`,`Year`) USING BTREE;
+
+--
+-- Indexes for table `_computed_solar_panel_data_yearly`
+--
+ALTER TABLE `_computed_solar_panel_data_yearly`
+  ADD PRIMARY KEY (`Monitor_ID`,`Year`) USING BTREE,
+  ADD UNIQUE KEY `uq_spdy` (`Monitor_ID`,`Year`) USING BTREE;
+
+--
+-- AUTO_INCREMENT for dumped tables
+--
+
+--
+-- AUTO_INCREMENT for table `consultation`
+--
+ALTER TABLE `consultation`
+  MODIFY `Consultation_ID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `energy_consumption`
+--
+ALTER TABLE `energy_consumption`
+  MODIFY `Consumption_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=201;
+
+--
+-- AUTO_INCREMENT for table `energy_production`
+--
+ALTER TABLE `energy_production`
+  MODIFY `Production_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=313;
+
+--
+-- AUTO_INCREMENT for table `environmental_data`
+--
+ALTER TABLE `environmental_data`
+  MODIFY `EnvData_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=201;
+
+--
+-- AUTO_INCREMENT for table `monitors`
+--
+ALTER TABLE `monitors`
+  MODIFY `Monitor_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
+
+--
+-- AUTO_INCREMENT for table `notifications`
+--
+ALTER TABLE `notifications`
+  MODIFY `Notification_ID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `sell_request`
+--
+ALTER TABLE `sell_request`
+  MODIFY `Request_ID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `system_logs`
+--
+ALTER TABLE `system_logs`
+  MODIFY `Log_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT for table `_computed_energy_reserves_daily`
+--
+ALTER TABLE `_computed_energy_reserves_daily`
+  MODIFY `EnergyReserves_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=151;
+
+--
+-- AUTO_INCREMENT for table `_computed_energy_reserves_monthly`
+--
+ALTER TABLE `_computed_energy_reserves_monthly`
+  MODIFY `EnergyReserves_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=112;
+
+--
+-- AUTO_INCREMENT for table `_computed_energy_reserves_yearly`
+--
+ALTER TABLE `_computed_energy_reserves_yearly`
+  MODIFY `EnergyReserves_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=38;
+
+--
+-- AUTO_INCREMENT for table `_computed_environmental_data_daily`
+--
+ALTER TABLE `_computed_environmental_data_daily`
+  MODIFY `Monitor_ID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `_computed_environmental_data_monthly`
+--
+ALTER TABLE `_computed_environmental_data_monthly`
+  MODIFY `Monitor_ID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `_computed_environmental_data_yearly`
+--
+ALTER TABLE `_computed_environmental_data_yearly`
+  MODIFY `Monitor_ID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- Constraints for dumped tables
+--
+
+--
+-- Constraints for table `consultation`
+--
+ALTER TABLE `consultation`
+  ADD CONSTRAINT `consultation_ibfk_1` FOREIGN KEY (`User_Email`) REFERENCES `accounts` (`Email`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `energy_consumption`
+--
+ALTER TABLE `energy_consumption`
+  ADD CONSTRAINT `fk_ec_monitor` FOREIGN KEY (`Monitor_ID`) REFERENCES `monitors` (`Monitor_ID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `energy_production`
+--
+ALTER TABLE `energy_production`
+  ADD CONSTRAINT `fk_ep_monitor` FOREIGN KEY (`Monitor_ID`) REFERENCES `monitors` (`Monitor_ID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `environmental_data`
+--
+ALTER TABLE `environmental_data`
+  ADD CONSTRAINT `fk_envd_monitor` FOREIGN KEY (`Monitor_ID`) REFERENCES `monitors` (`Monitor_ID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `monitors`
+--
+ALTER TABLE `monitors`
+  ADD CONSTRAINT `monitors_ibfk_1` FOREIGN KEY (`User_Email`) REFERENCES `accounts` (`Email`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `notifications`
+--
+ALTER TABLE `notifications`
+  ADD CONSTRAINT `fk_notifications_consumption` FOREIGN KEY (`EnergyConsumption_ID`) REFERENCES `energy_consumption` (`Consumption_ID`) ON DELETE SET NULL ON UPDATE SET NULL,
+  ADD CONSTRAINT `fk_notifications_envdata` FOREIGN KEY (`EnvData_ID`) REFERENCES `environmental_data` (`EnvData_ID`) ON DELETE SET NULL ON UPDATE SET NULL,
+  ADD CONSTRAINT `fk_notifications_monitor` FOREIGN KEY (`Monitor_ID`) REFERENCES `monitors` (`Monitor_ID`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_notifications_production` FOREIGN KEY (`EnergyProduction_ID`) REFERENCES `energy_production` (`Production_ID`) ON DELETE SET NULL ON UPDATE SET NULL,
+  ADD CONSTRAINT `fk_notifications_sellrequest` FOREIGN KEY (`SellRequest_ID`) REFERENCES `sell_request` (`Request_ID`) ON DELETE SET NULL ON UPDATE SET NULL;
+
+--
+-- Constraints for table `sell_request`
+--
+ALTER TABLE `sell_request`
+  ADD CONSTRAINT `sell_request_ibfk_2` FOREIGN KEY (`Monitor_ID`) REFERENCES `monitors` (`Monitor_ID`);
+
+--
+-- Constraints for table `solar_panel_config`
+--
+ALTER TABLE `solar_panel_config`
+  ADD CONSTRAINT `solar_panel_config_ibfk_1` FOREIGN KEY (`Monitor_ID`) REFERENCES `monitors` (`Monitor_ID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `system_logs`
+--
+ALTER TABLE `system_logs`
+  ADD CONSTRAINT `fk_systemlogs_useremail` FOREIGN KEY (`Actor_Email`) REFERENCES `accounts` (`Email`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `_computed_energy_consumption_daily`
+--
+ALTER TABLE `_computed_energy_consumption_daily`
+  ADD CONSTRAINT `_computed_energy_consumption_daily_ibfk_1` FOREIGN KEY (`Monitor_ID`) REFERENCES `monitors` (`Monitor_ID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `_computed_energy_consumption_monthly`
+--
+ALTER TABLE `_computed_energy_consumption_monthly`
+  ADD CONSTRAINT `_computed_energy_consumption_monthly_ibfk_1` FOREIGN KEY (`Monitor_ID`) REFERENCES `monitors` (`Monitor_ID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `_computed_energy_consumption_yearly`
+--
+ALTER TABLE `_computed_energy_consumption_yearly`
+  ADD CONSTRAINT `_computed_energy_consumption_yearly_ibfk_1` FOREIGN KEY (`Monitor_ID`) REFERENCES `monitors` (`Monitor_ID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `_computed_energy_production_daily`
+--
+ALTER TABLE `_computed_energy_production_daily`
+  ADD CONSTRAINT `_computed_energy_production_daily_ibfk_1` FOREIGN KEY (`Monitor_ID`) REFERENCES `monitors` (`Monitor_ID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `_computed_energy_production_monthly`
+--
+ALTER TABLE `_computed_energy_production_monthly`
+  ADD CONSTRAINT `_computed_energy_production_monthly_ibfk_1` FOREIGN KEY (`Monitor_ID`) REFERENCES `monitors` (`Monitor_ID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `_computed_energy_production_yearly`
+--
+ALTER TABLE `_computed_energy_production_yearly`
+  ADD CONSTRAINT `_computed_energy_production_yearly_ibfk_1` FOREIGN KEY (`Monitor_ID`) REFERENCES `monitors` (`Monitor_ID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `_computed_energy_reserves_daily`
+--
+ALTER TABLE `_computed_energy_reserves_daily`
+  ADD CONSTRAINT `fk_er_monitor` FOREIGN KEY (`Monitor_ID`) REFERENCES `monitors` (`Monitor_ID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `_computed_energy_reserves_monthly`
+--
+ALTER TABLE `_computed_energy_reserves_monthly`
+  ADD CONSTRAINT `fk_cerm_monitor` FOREIGN KEY (`Monitor_ID`) REFERENCES `monitors` (`Monitor_ID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `_computed_energy_reserves_yearly`
+--
+ALTER TABLE `_computed_energy_reserves_yearly`
+  ADD CONSTRAINT `fk_cery_monitor` FOREIGN KEY (`Monitor_ID`) REFERENCES `monitors` (`Monitor_ID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `_computed_environmental_data_daily`
+--
+ALTER TABLE `_computed_environmental_data_daily`
+  ADD CONSTRAINT `fk_cedd_monitor` FOREIGN KEY (`Monitor_ID`) REFERENCES `monitors` (`Monitor_ID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `_computed_environmental_data_monthly`
+--
+ALTER TABLE `_computed_environmental_data_monthly`
+  ADD CONSTRAINT `fk_cedm_monitor` FOREIGN KEY (`Monitor_ID`) REFERENCES `monitors` (`Monitor_ID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `_computed_environmental_data_yearly`
+--
+ALTER TABLE `_computed_environmental_data_yearly`
+  ADD CONSTRAINT `fk_cedy_monitor` FOREIGN KEY (`Monitor_ID`) REFERENCES `monitors` (`Monitor_ID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `_computed_solar_panel_data_daily`
+--
+ALTER TABLE `_computed_solar_panel_data_daily`
+  ADD CONSTRAINT `fk_solar_system_data_monitor` FOREIGN KEY (`Monitor_ID`) REFERENCES `monitors` (`Monitor_ID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `_computed_solar_panel_data_monthly`
+--
+ALTER TABLE `_computed_solar_panel_data_monthly`
+  ADD CONSTRAINT `fk_spdm_monitor` FOREIGN KEY (`Monitor_ID`) REFERENCES `monitors` (`Monitor_ID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `_computed_solar_panel_data_yearly`
+--
+ALTER TABLE `_computed_solar_panel_data_yearly`
+  ADD CONSTRAINT `fk_spdy_monitor` FOREIGN KEY (`Monitor_ID`) REFERENCES `monitors` (`Monitor_ID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+DELIMITER $$
+--
+-- Events
+--
+CREATE DEFINER=`root`@`localhost` EVENT `ev_process_recompute_days` ON SCHEDULE EVERY 1 MINUTE STARTS '2026-01-03 21:51:09' ON COMPLETION NOT PRESERVE ENABLE DO BEGIN
+  DECLARE done INT DEFAULT 0;
+  DECLARE d DATE;
+  DECLARE nc, np, nr, ns TINYINT;
+
+  DECLARE cur CURSOR FOR
+    SELECT `Date`, needs_consumption_daily, needs_production_daily, needs_reserves_daily, needs_solar_daily
+    FROM recompute_days
+    ORDER BY updated_at ASC;
+
+  DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
+
+  OPEN cur;
+
+  read_loop: LOOP
+    FETCH cur INTO d, nc, np, nr, ns;
+    IF done = 1 THEN LEAVE read_loop; END IF;
+
+    IF nc = 1 THEN
+      CALL compute_energy_consumption_daily(d);
+    END IF;
+
+    IF np = 1 THEN
+      CALL compute_energy_production_daily(d);
+    END IF;
+
+    IF nr = 1 THEN
+      -- depends on the daily production/consumption tables
+      CALL compute_energy_reserves_daily(d);
+    END IF;
+
+    IF ns = 1 THEN
+      CALL recompute_solar_panel_data_daily(d);
+    END IF;
+
+    DELETE FROM recompute_days WHERE `Date` = d;
+  END LOOP;
+
+  CLOSE cur;
+END$$
+
+CREATE DEFINER=`root`@`localhost` EVENT `ev_daily_rollups` ON SCHEDULE EVERY 1 DAY STARTS '2026-01-03 00:05:00' ON COMPLETION NOT PRESERVE ENABLE DO BEGIN
+  DECLARE d DATE;
+  DECLARE y INT;
+  DECLARE m INT;
+
+  SET d = DATE_SUB(CURRENT_DATE, INTERVAL 1 DAY);
+  SET y = YEAR(d);
+  SET m = MONTH(d);
+
+  -- daily (W→Wh procedures)
+  CALL compute_energy_consumption_daily(d);
+  CALL compute_energy_production_daily(d);
+  CALL compute_energy_reserves_daily(d);
+
+  -- solar daily
+  CALL recompute_solar_panel_data_daily(d);
+
+  -- monthly rollups (for the month of d)
+  CALL recompute_consumption_monthly(y, m);
+  CALL recompute_production_monthly(y, m);
+  CALL recompute_energy_reserves_monthly(y, m);
+
+  -- yearly rollups (for the year of d)
+  CALL compute_consumption_yearly(y);
+  CALL compute_production_yearly(y);
+  CALL recompute_energy_reserves_yearly(y);
+END$$
+
+DELIMITER ;
+COMMIT;
+
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;

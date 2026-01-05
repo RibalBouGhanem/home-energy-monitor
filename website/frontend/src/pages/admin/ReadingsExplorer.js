@@ -5,7 +5,6 @@ import SearchableSelect from "../../components/SearchableSelect";
 import DataTable from "../../components/DataTable";
 import ChartCard from "../../components/charts/ChartCard";
 import LineTimeChart from "../../components/charts/LineTimeChart";
-import { exportRowsToCsv } from "../../utils/exportCsv";
 import "../../styles/AdminPages.css";
 import "../../styles/ReadingsExplorer.css";
 
@@ -266,19 +265,6 @@ const consumptionIndexByTs = useMemo(() => {
           >
             Load
           </button>
-          {readingsData && 
-            <button
-              type="button"
-              className="secondary-button"
-              disabled={!readingsData}
-              onClick={() => {
-                const prefix = `monitor_${monitorId}`;
-                tablesChosen.forEach(([name, rows]) => { if (Array.isArray(rows) && rows.length > 0) exportRowsToCsv(`${prefix}_${name}.csv`, rows);});
-              }}
-            >
-              Export CSV
-            </button>
-          }
         </div>
       </div>
 
